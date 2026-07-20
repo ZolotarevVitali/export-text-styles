@@ -1,0 +1,14 @@
+{
+  "name": "Export text styles",
+  "id": "1660957928808902536",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "capabilities": ["inspect"],
+  "enableProposedApi": false,
+  "documentAccess": "dynamic-page",
+  "editorType": ["figma", "dev"],
+  "ui": "dist/ui.html",
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
+}
