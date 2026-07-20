@@ -1,6 +1,4 @@
-import { exportJSONTokens } from './export/export-json';
-import { exportCSSTokens } from './export/export-css';
-import { validateTokens } from './validation';
+import { exportTextStyles } from './export/export-text-styles';
 
 // This plugin exports Figma design tokens (variables and styles) to JSON format
 
@@ -15,35 +13,13 @@ figma.showUI(__html__, { width: 400, height: 400 });
 // Calls to "parent.postMessage" from within the HTML page will trigger this
 // callback. The callback will be passed the "pluginMessage" property of the
 // posted message.
-figma.ui.onmessage = async (msg: { type: string }) => {
-  if (msg.type === 'export-tokens') {
-    const tokens = await exportJSONTokens();
+figma.ui.onmessage = async (msg: { type: string; useVariables: boolean }) => {
+  if (msg.type === 'export') {
+    const textStyles = await exportTextStyles({ useVariables: msg.useVariables });
 
     figma.ui.postMessage({
-      type: 'export-files',
-      tokens,
+      type: 'export-text-styles',
+      textStyles,
     });
-  }
-
-  if (msg.type === 'export-css') {
-    const tokens = await exportCSSTokens();
-
-    figma.ui.postMessage({
-      type: 'export-files',
-      tokens,
-    });
-  }
-
-  if (msg.type === 'validate-tokens') {
-    const validation = await validateTokens();
-
-    figma.ui.postMessage({
-      type: 'validation-result',
-      validation,
-    });
-  }
-
-  if (msg.type === 'cancel') {
-    figma.closePlugin();
   }
 };

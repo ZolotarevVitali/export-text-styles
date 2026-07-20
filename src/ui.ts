@@ -19,24 +19,12 @@ if (logoImg) {
   logoImg.src = logo;
 }
 
+const checkboxUseVariables = document.getElementById('checkbox-use-variables') as HTMLInputElement;
+
 document.getElementById('export')!.onclick = () => {
   loadingDiv.classList.add('active');
-  parent.postMessage({ pluginMessage: { type: 'export-tokens' } }, '*');
-};
-
-document.getElementById('export-css')!.onclick = () => {
-  loadingDiv.classList.add('active');
-  parent.postMessage({ pluginMessage: { type: 'export-css' } }, '*');
-};
-
-document.getElementById('cancel')!.onclick = () => {
-  loadingDiv.classList.add('active');
-  parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
-};
-
-document.getElementById('validate')!.onclick = () => {
-  loadingDiv.classList.add('active');
-  parent.postMessage({ pluginMessage: { type: 'validate-tokens' } }, '*');
+  const useVariables = checkboxUseVariables.checked;
+  parent.postMessage({ pluginMessage: { type: 'export', useVariables } }, '*');
 };
 
 const errorDiv = document.getElementById('error') as HTMLDivElement;
@@ -48,16 +36,16 @@ window.onmessage = async (event) => {
   divMessage.textContent = '';
   const msg = event.data.pluginMessage;
   loadingDiv.classList.remove('active');
-  if (msg && msg.type === 'export-files') {
-    if (!msg.tokens) {
-      console.error('No tokens to download');
+  if (msg && msg.type === 'export-text-styles') {
+    if (!msg.textStyles) {
+      console.error('No text styles to download');
       return;
     }
     try {
       const zip = new JSZip();
 
-      for (const token of Object.keys(msg.tokens)) {
-        zip.file(token, msg.tokens[token]);
+      for (const token of Object.keys(msg.textStyles)) {
+        zip.file(token, msg.textStyles[token]);
       }
 
       const content = await zip.generateAsync({ type: 'base64' });
@@ -65,7 +53,7 @@ window.onmessage = async (event) => {
       // Create a download link
       const a = document.createElement('a');
       a.href = 'data:application/zip;base64,' + content;
-      a.download = 'tokens.zip';
+      a.download = 'text-styles.zip';
 
       // Trigger the download
       document.body.appendChild(a);
@@ -80,26 +68,6 @@ window.onmessage = async (event) => {
 
       errorDiv.textContent =
         'Error downloading file: ' + (error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  if (msg && msg.type === 'validation-result') {
-    if (msg.validation.success) {
-      divMessage.textContent = msg.validation.message;
-    } else {
-      console.error('Validation completed with errors');
-      const errorDiv = document.getElementById('error') as HTMLDivElement;
-      errorDiv.textContent = msg.validation.message;
-      const blob = new Blob([msg.validation.fileContent], { type: 'text/css' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'validation.txt';
-
-      // Trigger the download
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
     }
   }
 };

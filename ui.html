@@ -62,12 +62,6 @@
     gap: 16px;
   }
 
-  .icon {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-  }
-
   .message {
     font-size: 14px;
     font-weight: 400;
@@ -99,6 +93,30 @@
   .loading.active {
     display: flex;
   }
+
+  .checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    width: fit-content;
+    cursor: pointer;
+    transition: color 0.3s ease;
+  }
+
+  .checkbox-container:hover {
+    color: #009a5f;
+  }
+
+  .checkbox-label {
+    cursor: pointer;
+  }
+
+  .checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
 </style>
 
 <header class="header">
@@ -111,6 +129,11 @@
     Export
   </button>
 
+  <div class="checkbox-container">
+    <input type="checkbox" id="checkbox-use-variables" class="checkbox" checked />
+    <label for="checkbox-use-variables" class="checkbox-label">Use variables for properties (if
+      available)</label>
+  </div>
 </section>
 <div class="messages">
   <div id="message" class="message success"></div>
