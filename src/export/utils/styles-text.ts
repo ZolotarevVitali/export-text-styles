@@ -76,7 +76,9 @@ const getTextStyleFileNames = (textStyles: TFigmaTextStyle[]): Map<string, strin
 
   const uniqueNames = getUniqueNames(candidates, new Set(['index']));
 
-  return new Map(Array.from(uniqueNames, ([groupName, fileName]) => [groupName, `${fileName}.scss`]));
+  return new Map(
+    Array.from(uniqueNames, ([groupName, fileName]) => [groupName, `${fileName}.scss`])
+  );
 };
 
 const getTextStyleMixinNames = (textStyles: TFigmaTextStyle[]): Map<string, string> => {
@@ -91,7 +93,7 @@ const getTextStyleMixinNames = (textStyles: TFigmaTextStyle[]): Map<string, stri
 
 const getUniqueNames = (
   candidates: TNameCandidate[],
-  reservedNames: Set<string> = new Set(),
+  reservedNames: Set<string> = new Set()
 ): Map<string, string> => {
   const candidatesByBaseName = new Map<string, TNameCandidate[]>();
 
@@ -105,7 +107,7 @@ const getUniqueNames = (
   const usedNames = new Set<string>(reservedNames);
 
   for (const candidate of [...candidates].sort((first, second) =>
-    first.discriminator.localeCompare(second.discriminator),
+    first.discriminator.localeCompare(second.discriminator)
   )) {
     const matchingCandidates = candidatesByBaseName.get(candidate.baseName)!;
     const needsSuffix = matchingCandidates.length > 1 || reservedNames.has(candidate.baseName);
@@ -289,7 +291,7 @@ const normalizeLineHeightValue = (lineHeight: TFigmaTextStyle['lineHeight']): st
 };
 
 const normalizeLetterSpacingValue = (
-  letterSpacing: TFigmaTextStyle['letterSpacing'],
+  letterSpacing: TFigmaTextStyle['letterSpacing']
 ): string | null => {
   return normalizeNumericUnitValue(letterSpacing.value, letterSpacing.unit, true);
 };
@@ -297,7 +299,7 @@ const normalizeLetterSpacingValue = (
 const normalizeNumericUnitValue = (
   value: number,
   unit: 'PIXELS' | 'PERCENT',
-  convertPercentToEm = false,
+  convertPercentToEm = false
 ): string | null => {
   if (!Number.isFinite(value)) {
     return null;
@@ -307,9 +309,7 @@ const normalizeNumericUnitValue = (
     return `${formatCssNumber(value)}px`;
   }
 
-  return convertPercentToEm
-    ? `${formatCssNumber(value / 100)}em`
-    : `${formatCssNumber(value)}%`;
+  return convertPercentToEm ? `${formatCssNumber(value / 100)}em` : `${formatCssNumber(value)}%`;
 };
 
 const normalizePixelValue = (value: number): string | null => {
@@ -334,9 +334,7 @@ const normalizeFontStyleValue = (fontStyle: string | undefined): string | null =
   return normalizedFontStyle.includes('italic') ? 'italic' : 'normal';
 };
 
-const normalizeTextTransformValue = (
-  textCase: TFigmaTextStyle['textCase'],
-): string | null => {
+const normalizeTextTransformValue = (textCase: TFigmaTextStyle['textCase']): string | null => {
   const textTransforms: Partial<Record<TFigmaTextStyle['textCase'], string>> = {
     ORIGINAL: 'none',
     UPPER: 'uppercase',
@@ -348,7 +346,7 @@ const normalizeTextTransformValue = (
 };
 
 const normalizeTextDecorationValue = (
-  textDecoration: TFigmaTextStyle['textDecoration'],
+  textDecoration: TFigmaTextStyle['textDecoration']
 ): string => {
   const textDecorations: Record<TFigmaTextStyle['textDecoration'], string> = {
     NONE: 'none',
