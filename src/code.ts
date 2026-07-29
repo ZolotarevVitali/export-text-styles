@@ -8,48 +8,75 @@ import {
 
 const VARIABLE_MODE_STORAGE_KEY = 'variable-mode';
 
-const getStoredVariableMode = async (): Promise<TVariableMode> => {
-  try {
-    const storedVariableMode: unknown = await figma.clientStorage.getAsync(
-      VARIABLE_MODE_STORAGE_KEY,
-    );
-
-    return isVariableMode(storedVariableMode) ? storedVariableMode : DEFAULT_VARIABLE_MODE;
-  } catch (error: unknown) {
-    console.error('Error loading variable mode:', error);
-    return DEFAULT_VARIABLE_MODE;
-  }
+type TPluginDependencies = {
+  clientStorage: Pick<ClientStorageAPI, 'getAsync' | 'setAsync'>;
+  handleExport: typeof handleExportRequest;
+  html: string;
+  logError: typeof console.error;
+  showUI: typeof figma.showUI;
+  ui: Pick<UIAPI, 'onmessage' | 'postMessage'>;
 };
 
-const handlePluginMessage = async (message: TPluginRequestMessage): Promise<void> => {
-  if (message.type === 'save-variable-mode') {
+export const createPluginController = ({
+  clientStorage,
+  handleExport,
+  html,
+  logError,
+  showUI,
+  ui,
+}: TPluginDependencies) => {
+  const getStoredVariableMode = async (): Promise<TVariableMode> => {
     try {
-      await figma.clientStorage.setAsync(VARIABLE_MODE_STORAGE_KEY, message.variableMode);
+      const storedVariableMode: unknown = await clientStorage.getAsync(VARIABLE_MODE_STORAGE_KEY);
+
+      return isVariableMode(storedVariableMode) ? storedVariableMode : DEFAULT_VARIABLE_MODE;
     } catch (error: unknown) {
-      console.error('Error saving variable mode:', error);
+      logError('Error loading variable mode:', error);
+      return DEFAULT_VARIABLE_MODE;
     }
-    return;
-  }
+  };
 
-  if (message.type !== 'export') {
-    return;
-  }
+  const handlePluginMessage = async (message: TPluginRequestMessage): Promise<void> => {
+    if (message.type === 'save-variable-mode') {
+      try {
+        await clientStorage.setAsync(VARIABLE_MODE_STORAGE_KEY, message.variableMode);
+      } catch (error: unknown) {
+        logError('Error saving variable mode:', error);
+      }
+      return;
+    }
 
-  const response = await handleExportRequest(message);
+    if (message.type !== 'export') {
+      return;
+    }
 
-  if (response.type === 'export-text-styles-error') {
-    console.error('Error exporting text styles:', response.error);
-  }
+    const response = await handleExport(message);
 
-  figma.ui.postMessage(response);
+    if (response.type === 'export-text-styles-error') {
+      logError('Error exporting text styles:', response.error);
+    }
+
+    ui.postMessage(response);
+  };
+
+  const initializePlugin = async (): Promise<void> => {
+    const variableMode = await getStoredVariableMode();
+
+    showUI(html, { width: 400, height: 400 });
+    ui.onmessage = handlePluginMessage;
+    ui.postMessage({ type: 'variable-mode', variableMode });
+  };
+
+  return { getStoredVariableMode, handlePluginMessage, initializePlugin };
 };
 
-const initializePlugin = async (): Promise<void> => {
-  const variableMode = await getStoredVariableMode();
+const pluginController = createPluginController({
+  clientStorage: figma.clientStorage,
+  handleExport: handleExportRequest,
+  html: __html__,
+  logError: console.error,
+  showUI: figma.showUI,
+  ui: figma.ui,
+});
 
-  figma.showUI(__html__, { width: 400, height: 400 });
-  figma.ui.onmessage = handlePluginMessage;
-  figma.ui.postMessage({ type: 'variable-mode', variableMode });
-};
-
-void initializePlugin();
+void pluginController.initializePlugin();

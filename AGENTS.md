@@ -25,7 +25,7 @@ and must not be treated as current behavior.
 - Imperative HTML/DOM UI; this project does not use React
 - Webpack and `ts-loader`
 - JSZip for creating the downloadable archive
-- Vitest and Dart Sass for regression tests
+- Vitest, V8 coverage, Happy DOM, and Dart Sass for regression tests
 - ESLint with TypeScript and Figma plugin rules
 
 Figma plugins run in two separate environments:
@@ -97,7 +97,9 @@ persistence.
 - `src/export/utils/scss.ts` — SCSS-safe naming, escaping, and stable suffixes.
 - `src/export/utils/variable.ts` — Figma variable lookup and CSS custom-property
   name preparation.
-- `src/export/export.test.ts` — exporter and message regression tests.
+- `src/**/*.test.ts` — sandbox, UI, exporter, message, and utility regression
+  tests. UI tests use Happy DOM.
+- `vitest.config.ts` — test coverage configuration and enforced thresholds.
 - `webpack.config.js` — builds the sandbox and UI bundles.
 - `dist/code.js` and `dist/ui.html` — generated artifacts loaded by Figma.
 
@@ -328,6 +330,16 @@ Run regression tests:
 npm test
 ```
 
+Run regression tests with coverage:
+
+```sh
+npm run test:coverage
+```
+
+Coverage is enforced at 100% for statements, branches, functions, and lines in
+executable TypeScript under `src/`. Tests, generated output, declarations, and
+type-only modules are excluded.
+
 Run strict type checks for plugin and test code:
 
 ```sh
@@ -369,13 +381,14 @@ To test manually in Figma:
 
 For normal source changes:
 
-1. Run `npm test`.
-2. Run `npm run typecheck`.
-3. Run `npm run lint`.
-4. Run `npm run build`.
-5. Review generated `dist` changes and confirm they correspond to source
+1. Run `npm run test:coverage`.
+2. Run `npm test`.
+3. Run `npm run typecheck`.
+4. Run `npm run lint`.
+5. Run `npm run build`.
+6. Review generated `dist` changes and confirm they correspond to source
    changes.
-6. Manually test in Figma when the change affects runtime behavior or generated
+7. Manually test in Figma when the change affects runtime behavior or generated
    SCSS.
 
 For documentation-only changes, verify paths, commands, and behavior against

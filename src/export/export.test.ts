@@ -495,6 +495,26 @@ describe('font weight normalization', () => {
 });
 
 describe('export request handling', () => {
+  it.each([
+    [{ 'body.scss': 'content' }, { 'body.scss': 'content' }],
+    [null, null],
+  ])('returns a correlated success response for %j', async (result, expected) => {
+    const response = await handleExportRequest(
+      {
+        type: 'export',
+        requestId: 'request-success',
+        variableMode: 'value',
+      },
+      async () => result,
+    );
+
+    expect(response).toEqual({
+      type: 'export-text-styles',
+      requestId: 'request-success',
+      textStyles: expected,
+    });
+  });
+
   it('returns a correlated error response when export fails', async () => {
     const response = await handleExportRequest(
       {
@@ -511,6 +531,25 @@ describe('export request handling', () => {
       type: 'export-text-styles-error',
       requestId: 'request-1',
       error: 'Figma API unavailable',
+    });
+  });
+
+  it('normalizes non-Error failures', async () => {
+    const response = await handleExportRequest(
+      {
+        type: 'export',
+        requestId: 'request-2',
+        variableMode: 'none',
+      },
+      async () => {
+        throw 'unknown failure';
+      },
+    );
+
+    expect(response).toEqual({
+      type: 'export-text-styles-error',
+      requestId: 'request-2',
+      error: 'unknown failure',
     });
   });
 });

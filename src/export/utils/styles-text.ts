@@ -35,12 +35,8 @@ export const prepareTextStyles = async ({
 
   for (const style of textStyles) {
     const groupName = getTextStyleGroupName(style.name);
-    const fileName = fileNamesByGroup.get(groupName);
-    const mixinName = mixinNamesById.get(style.id);
-
-    if (!fileName || !mixinName) {
-      throw new Error(`Unable to prepare text style "${style.name}".`);
-    }
+    const fileName = fileNamesByGroup.get(groupName)!;
+    const mixinName = mixinNamesById.get(style.id)!;
 
     const preparedTextStyle: TPreparedTextStyle = {
       originalName: style.name,
@@ -111,7 +107,7 @@ const getUniqueNames = (
   for (const candidate of [...candidates].sort((first, second) =>
     first.discriminator.localeCompare(second.discriminator),
   )) {
-    const matchingCandidates = candidatesByBaseName.get(candidate.baseName) ?? [];
+    const matchingCandidates = candidatesByBaseName.get(candidate.baseName)!;
     const needsSuffix = matchingCandidates.length > 1 || reservedNames.has(candidate.baseName);
     const suffixedName = `${candidate.baseName}-${getStableSuffix(candidate.discriminator)}`;
     const desiredName = needsSuffix ? suffixedName : candidate.baseName;
