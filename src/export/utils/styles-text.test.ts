@@ -110,6 +110,29 @@ describe('text style loading and edge normalization', () => {
     expect(preparedStyle['text-indent']).toBe('0px');
   });
 
+  it('rounds numeric typography values to four decimal places', async () => {
+    const preparedStyle = getOnlyStyle(
+      await prepareTextStyles({
+        textStyles: [
+          createStyle({
+            fontSize: 16.123456,
+            lineHeight: { value: 120.00000476837158, unit: 'PERCENT' },
+            letterSpacing: { value: 1.23456, unit: 'PIXELS' },
+            paragraphIndent: 8.7654321,
+          }),
+        ],
+        variableMode: 'none',
+      }),
+    );
+
+    expect(preparedStyle).toMatchObject({
+      'font-size': '16.1235px',
+      'line-height': '120%',
+      'letter-spacing': '1.2346px',
+      'text-indent': '8.7654px',
+    });
+  });
+
   it('omits non-finite numbers, blank styles, and unsupported text transforms', async () => {
     const preparedStyle = getOnlyStyle(
       await prepareTextStyles({

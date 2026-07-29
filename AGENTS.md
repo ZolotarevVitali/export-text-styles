@@ -202,6 +202,8 @@ punctuation, hanging lists, fills, or other text-style fields.
 
 Typography values are converted to CSS as follows:
 
+- Numeric typography values are rounded to at most four decimal places, and
+  trailing zeroes are omitted.
 - Pixel line heights use `px`, percentage line heights use `%`, and automatic
   line heights use `normal`.
 - Pixel letter spacing uses `px`. Percentage letter spacing is divided by 100

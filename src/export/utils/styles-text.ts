@@ -304,18 +304,20 @@ const normalizeNumericUnitValue = (
   }
 
   if (unit === 'PIXELS') {
-    return `${value}px`;
+    return `${formatCssNumber(value)}px`;
   }
 
-  return convertPercentToEm ? `${formatCssNumber(value / 100)}em` : `${value}%`;
+  return convertPercentToEm
+    ? `${formatCssNumber(value / 100)}em`
+    : `${formatCssNumber(value)}%`;
 };
 
 const normalizePixelValue = (value: number): string | null => {
-  return Number.isFinite(value) ? `${value}px` : null;
+  return Number.isFinite(value) ? `${formatCssNumber(value)}px` : null;
 };
 
 const formatCssNumber = (value: number): string => {
-  return String(Number(value.toFixed(6)));
+  return String(Number(value.toFixed(4)));
 };
 
 const normalizeFontStyleValue = (fontStyle: string | undefined): string | null => {

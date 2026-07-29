@@ -201,7 +201,7 @@ describe('text style preparation', () => {
           id: 'typography',
           name: 'Heading/Display',
           fontStyle: 'Semi Bold Italic',
-          lineHeight: { value: 120, unit: 'PERCENT' },
+          lineHeight: { value: 120.00000476837158, unit: 'PERCENT' },
           letterSpacing: { value: -2.5, unit: 'PERCENT' },
           textCase: 'UPPER',
           textDecoration: 'STRIKETHROUGH',
@@ -277,7 +277,7 @@ describe('text style preparation', () => {
           id: 'fontSize',
           name: 'Typography/Font Size',
           variableCollectionId: 'typography',
-          valuesByMode: { default: 18 },
+          valuesByMode: { default: 18.123456 },
         },
         family: {
           id: 'family',
@@ -301,19 +301,19 @@ describe('text style preparation', () => {
           id: 'lineHeight',
           name: 'Typography/Line Height',
           variableCollectionId: 'typography',
-          valuesByMode: { default: 28 },
+          valuesByMode: { default: 28.00000476837158 },
         },
         letterSpacing: {
           id: 'letterSpacing',
           name: 'Typography/Letter Spacing',
           variableCollectionId: 'typography',
-          valuesByMode: { default: 3 },
+          valuesByMode: { default: 3.141592 },
         },
         indent: {
           id: 'indent',
           name: 'Typography/Paragraph Indent',
           variableCollectionId: 'typography',
-          valuesByMode: { default: 12 },
+          valuesByMode: { default: 12.123456 },
         },
       },
       collections: {
@@ -364,13 +364,13 @@ describe('text style preparation', () => {
     expect(variableNames['line-height']).toBe('var(--typography-line-height)');
     expect(variableNames['letter-spacing']).toBe('var(--typography-letter-spacing)');
     expect(variableNames['text-indent']).toBe('var(--typography-paragraph-indent)');
-    expect(variableValues['font-size']).toBe('18px');
+    expect(variableValues['font-size']).toBe('18.1235px');
     expect(variableValues['font-family']).toBe('"Avenir \\"Next\\"", Arial, sans-serif');
     expect(variableValues['font-weight']).toBe('650');
     expect(variableValues['font-style']).toBe('oblique');
     expect(variableValues['line-height']).toBe('28px');
-    expect(variableValues['letter-spacing']).toBe('0.03em');
-    expect(variableValues['text-indent']).toBe('12px');
+    expect(variableValues['letter-spacing']).toBe('0.0314em');
+    expect(variableValues['text-indent']).toBe('12.1235px');
   });
 
   it('resolves aliases through each collection default mode', async () => {
