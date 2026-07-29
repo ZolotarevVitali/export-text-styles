@@ -10,12 +10,22 @@ const createTextStyle = ({
   name,
   fontFamily = 'Inter',
   fontStyle = 'Regular',
+  lineHeight = { unit: 'AUTO' },
+  letterSpacing = { value: 0, unit: 'PIXELS' },
+  textCase = 'ORIGINAL',
+  textDecoration = 'NONE',
+  paragraphIndent = 0,
   boundVariables,
 }: {
   id: string;
   name: string;
   fontFamily?: string;
   fontStyle?: string;
+  lineHeight?: TFigmaTextStyle['lineHeight'];
+  letterSpacing?: TFigmaTextStyle['letterSpacing'];
+  textCase?: TFigmaTextStyle['textCase'];
+  textDecoration?: TFigmaTextStyle['textDecoration'];
+  paragraphIndent?: number;
   boundVariables?: TFigmaTextStyle['boundVariables'];
 }): TFigmaTextStyle => ({
   id,
@@ -25,6 +35,11 @@ const createTextStyle = ({
     family: fontFamily,
     style: fontStyle,
   },
+  lineHeight,
+  letterSpacing,
+  textCase,
+  textDecoration,
+  paragraphIndent,
   boundVariables,
 });
 
@@ -179,6 +194,82 @@ describe('text style preparation', () => {
     ).not.toThrow();
   });
 
+  it('exports and normalizes the additional typography properties in a stable order', async () => {
+    const preparedStyles = await prepareTextStyles({
+      textStyles: [
+        createTextStyle({
+          id: 'typography',
+          name: 'Heading/Display',
+          fontStyle: 'Semi Bold Italic',
+          lineHeight: { value: 120, unit: 'PERCENT' },
+          letterSpacing: { value: -2.5, unit: 'PERCENT' },
+          textCase: 'UPPER',
+          textDecoration: 'STRIKETHROUGH',
+          paragraphIndent: 24,
+        }),
+      ],
+      variableMode: 'none',
+    });
+    const files = buildTextStyleFiles(preparedStyles);
+    const content = files?.['heading.scss'] ?? '';
+
+    expect(content).toContain(
+      [
+        '\tfont-size: 16px;',
+        '\tfont-family: "Inter", Arial, sans-serif;',
+        '\tfont-weight: 600;',
+        '\tline-height: 120%;',
+        '\tletter-spacing: -0.025em;',
+        '\tfont-style: italic;',
+        '\ttext-transform: uppercase;',
+        '\ttext-decoration: line-through;',
+        '\ttext-indent: 24px;',
+      ].join('\n'),
+    );
+  });
+
+  it('maps automatic, pixel, title-case, underline, and oblique values', async () => {
+    const preparedStyle = getOnlyPreparedStyle(
+      await prepareTextStyles({
+        textStyles: [
+          createTextStyle({
+            id: 'mapping',
+            name: 'Body/Mapping',
+            fontStyle: 'Regular Oblique',
+            lineHeight: { unit: 'AUTO' },
+            letterSpacing: { value: 1.5, unit: 'PIXELS' },
+            textCase: 'TITLE',
+            textDecoration: 'UNDERLINE',
+          }),
+        ],
+        variableMode: 'none',
+      }),
+    );
+
+    expect(preparedStyle['line-height']).toBe('normal');
+    expect(preparedStyle['letter-spacing']).toBe('1.5px');
+    expect(preparedStyle['font-style']).toBe('oblique');
+    expect(preparedStyle['text-transform']).toBe('capitalize');
+    expect(preparedStyle['text-decoration']).toBe('underline');
+  });
+
+  it('omits text-transform for small caps because CSS requires font-variant-caps', async () => {
+    const preparedStyle = getOnlyPreparedStyle(
+      await prepareTextStyles({
+        textStyles: [
+          createTextStyle({
+            id: 'small-caps',
+            name: 'Body/Small Caps',
+            textCase: 'SMALL_CAPS',
+          }),
+        ],
+        variableMode: 'none',
+      }),
+    );
+
+    expect(preparedStyle['text-transform']).toBeNull();
+  });
+
   it('supports none, variable name, and variable value modes', async () => {
     stubFigmaVariables({
       variables: {
@@ -194,6 +285,30 @@ describe('text style preparation', () => {
           variableCollectionId: 'typography',
           valuesByMode: { default: 650 },
         },
+        style: {
+          id: 'style',
+          name: 'Typography/Font Style',
+          variableCollectionId: 'typography',
+          valuesByMode: { default: 'Oblique' },
+        },
+        lineHeight: {
+          id: 'lineHeight',
+          name: 'Typography/Line Height',
+          variableCollectionId: 'typography',
+          valuesByMode: { default: 28 },
+        },
+        letterSpacing: {
+          id: 'letterSpacing',
+          name: 'Typography/Letter Spacing',
+          variableCollectionId: 'typography',
+          valuesByMode: { default: 3 },
+        },
+        indent: {
+          id: 'indent',
+          name: 'Typography/Paragraph Indent',
+          variableCollectionId: 'typography',
+          valuesByMode: { default: 12 },
+        },
       },
       collections: {
         typography: { id: 'typography', defaultModeId: 'default' },
@@ -203,9 +318,17 @@ describe('text style preparation', () => {
       createTextStyle({
         id: 'body',
         name: 'Body/Default',
+        fontStyle: 'Regular Italic',
+        lineHeight: { value: 24, unit: 'PIXELS' },
+        letterSpacing: { value: 2, unit: 'PERCENT' },
+        paragraphIndent: 8,
         boundVariables: {
           fontFamily: { id: 'family' },
           fontWeight: { id: 'weight' },
+          fontStyle: { id: 'style' },
+          lineHeight: { id: 'lineHeight' },
+          letterSpacing: { id: 'letterSpacing' },
+          paragraphIndent: { id: 'indent' },
         },
       }),
     ];
@@ -222,10 +345,22 @@ describe('text style preparation', () => {
 
     expect(styleValues['font-family']).toBe('"Inter", Arial, sans-serif');
     expect(styleValues['font-weight']).toBe('400');
+    expect(styleValues['font-style']).toBe('italic');
+    expect(styleValues['line-height']).toBe('24px');
+    expect(styleValues['letter-spacing']).toBe('0.02em');
+    expect(styleValues['text-indent']).toBe('8px');
     expect(variableNames['font-family']).toBe('var(--typography-font-family)');
     expect(variableNames['font-weight']).toBe('var(--typography-font-weight)');
+    expect(variableNames['font-style']).toBe('var(--typography-font-style)');
+    expect(variableNames['line-height']).toBe('var(--typography-line-height)');
+    expect(variableNames['letter-spacing']).toBe('var(--typography-letter-spacing)');
+    expect(variableNames['text-indent']).toBe('var(--typography-paragraph-indent)');
     expect(variableValues['font-family']).toBe('"Avenir \\"Next\\"", Arial, sans-serif');
     expect(variableValues['font-weight']).toBe('650');
+    expect(variableValues['font-style']).toBe('oblique');
+    expect(variableValues['line-height']).toBe('28px');
+    expect(variableValues['letter-spacing']).toBe('0.03em');
+    expect(variableValues['text-indent']).toBe('12px');
   });
 
   it('resolves aliases through each collection default mode', async () => {
@@ -292,6 +427,12 @@ describe('text style preparation', () => {
           variableCollectionId: 'typography',
           valuesByMode: { default: true },
         },
+        lineHeight: {
+          id: 'lineHeight',
+          name: 'Line Height',
+          variableCollectionId: 'typography',
+          valuesByMode: { default: 'invalid' },
+        },
       },
       collections: {
         typography: { id: 'typography', defaultModeId: 'default' },
@@ -305,9 +446,11 @@ describe('text style preparation', () => {
             name: 'Body/Fallback',
             fontFamily: 'Inter',
             fontStyle: 'Bold',
+            lineHeight: { value: 20, unit: 'PIXELS' },
             boundVariables: {
               fontFamily: { id: 'family-a' },
               fontWeight: { id: 'weight' },
+              lineHeight: { id: 'lineHeight' },
             },
           }),
         ],
@@ -317,6 +460,7 @@ describe('text style preparation', () => {
 
     expect(preparedStyle['font-family']).toBe('"Inter", Arial, sans-serif');
     expect(preparedStyle['font-weight']).toBe('700');
+    expect(preparedStyle['line-height']).toBe('20px');
   });
 });
 

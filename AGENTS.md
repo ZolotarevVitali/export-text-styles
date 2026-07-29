@@ -187,10 +187,32 @@ Each mixin can contain:
 - `font-size`
 - `font-family`
 - `font-weight`
+- `line-height`
+- `letter-spacing`
+- `font-style`
+- `text-transform`
+- `text-decoration`
+- `text-indent`
 
 Properties with `null` or another falsy value are omitted. The exporter does
-not currently include line height, letter spacing, text case, decoration,
-paragraph properties, fills, or other text-style fields.
+not currently include paragraph spacing, list spacing, leading trim, hanging
+punctuation, hanging lists, fills, or other text-style fields.
+
+Typography values are converted to CSS as follows:
+
+- Pixel line heights use `px`, percentage line heights use `%`, and automatic
+  line heights use `normal`.
+- Pixel letter spacing uses `px`. Percentage letter spacing is divided by 100
+  and emitted as `em`, because CSS `letter-spacing` does not accept percentages.
+- Font style names containing `italic` or `oblique` emit the corresponding CSS
+  value; other non-empty style names emit `normal`.
+- `ORIGINAL`, `UPPER`, `LOWER`, and `TITLE` text cases emit `none`, `uppercase`,
+  `lowercase`, and `capitalize`.
+- Small-caps text cases are omitted because their CSS equivalent is
+  `font-variant-caps`, not `text-transform`.
+- `NONE`, `UNDERLINE`, and `STRIKETHROUGH` decorations emit `none`, `underline`,
+  and `line-through`.
+- Paragraph indent is emitted as `text-indent` in pixels.
 
 The generated shape is:
 
@@ -200,6 +222,12 @@ The generated shape is:
 	font-size: 24px;
 	font-family: "Inter", Arial, sans-serif;
 	font-weight: 700;
+	line-height: 120%;
+	letter-spacing: -0.02em;
+	font-style: normal;
+	text-transform: none;
+	text-decoration: none;
+	text-indent: 0px;
 }
 ```
 
@@ -211,17 +239,26 @@ formatting changes when fixing behavior.
 The UI “Apply variables” select controls how bound Figma variables are used for
 supported properties:
 
-- `None` emits the text style's own `fontFamily` and `fontWeight` values.
+- `None` emits the text style's own values.
 - `Variable name` emits `var(--normalized-variable-name)` and is the default.
 - `Variable value` reads the variable collection's default mode. Aliases are
  resolved recursively using each referenced collection's default mode.
+
+Variable modes apply to `font-family`, `font-weight`, `line-height`,
+`letter-spacing`, `font-style`, and `text-indent`. Their corresponding Figma
+fields are `fontFamily`, `fontWeight`, `lineHeight`, `letterSpacing`,
+`fontStyle`, and `paragraphIndent`. Text case and decoration do not support
+variable bindings on Figma text styles.
 
 For variable values, font families keep the generated
 `"Figma Font Family", Arial, sans-serif` shape with SCSS string escaping.
 Font weights use the same normalization as style values. Common labels such as
 `Regular`, `Semibold`, and `Bold` map to `400`, `600`, and `700`. Integer
 numeric weights from `1` through `1000` are preserved. `italic` and `oblique`
-text is removed before matching.
+text is removed before matching. Numeric line-height and letter-spacing
+variables use the unit from the bound text-style property. Numeric paragraph
+indent variables use pixels. Font-style variables use the same normalization
+as the text style's font name.
 
 Missing variables, unresolved or cyclic aliases, unsupported value types, and
 invalid property values fall back to the text style's own value.

@@ -48,6 +48,12 @@ export const prepareTextStyles = async ({
       'font-size': Number.isFinite(style.fontSize) ? `${style.fontSize}px` : null,
       'font-family': await getFontFamily({ style, variableMode }),
       'font-weight': await getFontWeight({ style, variableMode }),
+      'line-height': await getLineHeight({ style, variableMode }),
+      'letter-spacing': await getLetterSpacing({ style, variableMode }),
+      'font-style': await getFontStyle({ style, variableMode }),
+      'text-transform': normalizeTextTransformValue(style.textCase),
+      'text-decoration': normalizeTextDecorationValue(style.textDecoration),
+      'text-indent': await getTextIndent({ style, variableMode }),
     };
 
     if (!preparedTextStyles[fileName]) {
@@ -157,24 +163,186 @@ const getFontWeight = async ({
   style: TFigmaTextStyle;
   variableMode: TVariableMode;
 }): Promise<string | null> => {
-  if (variableMode === 'name') {
-    const variableName = await getVariableNameById(style.boundVariables?.fontWeight?.id);
+  return getVariableAwareValue({
+    variableMode,
+    variableId: style.boundVariables?.fontWeight?.id,
+    fallbackValue: normalizeFontWeightValue(style.fontName.style),
+    normalizeVariableValue: (value) => normalizeFontWeightValue(String(value)),
+  });
+};
 
-    if (variableName) {
-      return variableName;
-    }
+const getLineHeight = async ({
+  style,
+  variableMode,
+}: {
+  style: TFigmaTextStyle;
+  variableMode: TVariableMode;
+}): Promise<string | null> => {
+  return getVariableAwareValue({
+    variableMode,
+    variableId: style.boundVariables?.lineHeight?.id,
+    fallbackValue: normalizeLineHeightValue(style.lineHeight),
+    normalizeVariableValue: (value) => {
+      if (typeof value !== 'number' || style.lineHeight.unit === 'AUTO') {
+        return null;
+      }
+
+      return normalizeNumericUnitValue(value, style.lineHeight.unit);
+    },
+  });
+};
+
+const getLetterSpacing = async ({
+  style,
+  variableMode,
+}: {
+  style: TFigmaTextStyle;
+  variableMode: TVariableMode;
+}): Promise<string | null> => {
+  return getVariableAwareValue({
+    variableMode,
+    variableId: style.boundVariables?.letterSpacing?.id,
+    fallbackValue: normalizeLetterSpacingValue(style.letterSpacing),
+    normalizeVariableValue: (value) =>
+      typeof value === 'number'
+        ? normalizeNumericUnitValue(value, style.letterSpacing.unit, true)
+        : null,
+  });
+};
+
+const getFontStyle = async ({
+  style,
+  variableMode,
+}: {
+  style: TFigmaTextStyle;
+  variableMode: TVariableMode;
+}): Promise<string | null> => {
+  return getVariableAwareValue({
+    variableMode,
+    variableId: style.boundVariables?.fontStyle?.id,
+    fallbackValue: normalizeFontStyleValue(style.fontName.style),
+    normalizeVariableValue: (value) =>
+      typeof value === 'string' ? normalizeFontStyleValue(value) : null,
+  });
+};
+
+const getTextIndent = async ({
+  style,
+  variableMode,
+}: {
+  style: TFigmaTextStyle;
+  variableMode: TVariableMode;
+}): Promise<string | null> => {
+  return getVariableAwareValue({
+    variableMode,
+    variableId: style.boundVariables?.paragraphIndent?.id,
+    fallbackValue: normalizePixelValue(style.paragraphIndent),
+    normalizeVariableValue: (value) =>
+      typeof value === 'number' ? normalizePixelValue(value) : null,
+  });
+};
+
+const getVariableAwareValue = async ({
+  variableMode,
+  variableId,
+  fallbackValue,
+  normalizeVariableValue,
+}: {
+  variableMode: TVariableMode;
+  variableId?: string;
+  fallbackValue: string | null;
+  normalizeVariableValue: (value: string | number) => string | null;
+}): Promise<string | null> => {
+  if (variableMode === 'name') {
+    return (await getVariableNameById(variableId)) ?? fallbackValue;
   }
 
   if (variableMode === 'value') {
-    const variableValue = await getVariableValueById(style.boundVariables?.fontWeight?.id);
-    const normalizedVariableValue = normalizeFontWeightValue(String(variableValue ?? ''));
+    const variableValue = await getVariableValueById(variableId);
 
-    if (normalizedVariableValue) {
-      return normalizedVariableValue;
+    if (variableValue !== null) {
+      return normalizeVariableValue(variableValue) ?? fallbackValue;
     }
   }
 
-  return normalizeFontWeightValue(style.fontName.style);
+  return fallbackValue;
+};
+
+const normalizeLineHeightValue = (lineHeight: TFigmaTextStyle['lineHeight']): string | null => {
+  if (lineHeight.unit === 'AUTO') {
+    return 'normal';
+  }
+
+  return normalizeNumericUnitValue(lineHeight.value, lineHeight.unit);
+};
+
+const normalizeLetterSpacingValue = (
+  letterSpacing: TFigmaTextStyle['letterSpacing'],
+): string | null => {
+  return normalizeNumericUnitValue(letterSpacing.value, letterSpacing.unit, true);
+};
+
+const normalizeNumericUnitValue = (
+  value: number,
+  unit: 'PIXELS' | 'PERCENT',
+  convertPercentToEm = false,
+): string | null => {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+
+  if (unit === 'PIXELS') {
+    return `${value}px`;
+  }
+
+  return convertPercentToEm ? `${formatCssNumber(value / 100)}em` : `${value}%`;
+};
+
+const normalizePixelValue = (value: number): string | null => {
+  return Number.isFinite(value) ? `${value}px` : null;
+};
+
+const formatCssNumber = (value: number): string => {
+  return String(Number(value.toFixed(6)));
+};
+
+const normalizeFontStyleValue = (fontStyle: string | undefined): string | null => {
+  const normalizedFontStyle = fontStyle?.trim().toLowerCase();
+
+  if (!normalizedFontStyle) {
+    return null;
+  }
+
+  if (normalizedFontStyle.includes('oblique')) {
+    return 'oblique';
+  }
+
+  return normalizedFontStyle.includes('italic') ? 'italic' : 'normal';
+};
+
+const normalizeTextTransformValue = (
+  textCase: TFigmaTextStyle['textCase'],
+): string | null => {
+  const textTransforms: Partial<Record<TFigmaTextStyle['textCase'], string>> = {
+    ORIGINAL: 'none',
+    UPPER: 'uppercase',
+    LOWER: 'lowercase',
+    TITLE: 'capitalize',
+  };
+
+  return textTransforms[textCase] ?? null;
+};
+
+const normalizeTextDecorationValue = (
+  textDecoration: TFigmaTextStyle['textDecoration'],
+): string => {
+  const textDecorations: Record<TFigmaTextStyle['textDecoration'], string> = {
+    NONE: 'none',
+    UNDERLINE: 'underline',
+    STRIKETHROUGH: 'line-through',
+  };
+
+  return textDecorations[textDecoration];
 };
 
 /** Maps Figma font style labels and numeric weights to valid CSS weights. */
