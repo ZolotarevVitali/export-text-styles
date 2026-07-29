@@ -273,6 +273,12 @@ describe('text style preparation', () => {
   it('supports none, variable name, and variable value modes', async () => {
     stubFigmaVariables({
       variables: {
+        fontSize: {
+          id: 'fontSize',
+          name: 'Typography/Font Size',
+          variableCollectionId: 'typography',
+          valuesByMode: { default: 18 },
+        },
         family: {
           id: 'family',
           name: 'Typography/Font.Family',
@@ -323,6 +329,7 @@ describe('text style preparation', () => {
         letterSpacing: { value: 2, unit: 'PERCENT' },
         paragraphIndent: 8,
         boundVariables: {
+          fontSize: { id: 'fontSize' },
           fontFamily: { id: 'family' },
           fontWeight: { id: 'weight' },
           fontStyle: { id: 'style' },
@@ -343,18 +350,21 @@ describe('text style preparation', () => {
       await prepareTextStyles({ textStyles, variableMode: 'value' }),
     );
 
+    expect(styleValues['font-size']).toBe('16px');
     expect(styleValues['font-family']).toBe('"Inter", Arial, sans-serif');
     expect(styleValues['font-weight']).toBe('400');
     expect(styleValues['font-style']).toBe('italic');
     expect(styleValues['line-height']).toBe('24px');
     expect(styleValues['letter-spacing']).toBe('0.02em');
     expect(styleValues['text-indent']).toBe('8px');
+    expect(variableNames['font-size']).toBe('var(--typography-font-size)');
     expect(variableNames['font-family']).toBe('var(--typography-font-family)');
     expect(variableNames['font-weight']).toBe('var(--typography-font-weight)');
     expect(variableNames['font-style']).toBe('var(--typography-font-style)');
     expect(variableNames['line-height']).toBe('var(--typography-line-height)');
     expect(variableNames['letter-spacing']).toBe('var(--typography-letter-spacing)');
     expect(variableNames['text-indent']).toBe('var(--typography-paragraph-indent)');
+    expect(variableValues['font-size']).toBe('18px');
     expect(variableValues['font-family']).toBe('"Avenir \\"Next\\"", Arial, sans-serif');
     expect(variableValues['font-weight']).toBe('650');
     expect(variableValues['font-style']).toBe('oblique');
@@ -409,6 +419,12 @@ describe('text style preparation', () => {
   it('falls back to style values for cyclic aliases and unsupported values', async () => {
     stubFigmaVariables({
       variables: {
+        fontSize: {
+          id: 'fontSize',
+          name: 'Font Size',
+          variableCollectionId: 'typography',
+          valuesByMode: { default: 'invalid' },
+        },
         'family-a': {
           id: 'family-a',
           name: 'Family A',
@@ -448,6 +464,7 @@ describe('text style preparation', () => {
             fontStyle: 'Bold',
             lineHeight: { value: 20, unit: 'PIXELS' },
             boundVariables: {
+              fontSize: { id: 'fontSize' },
               fontFamily: { id: 'family-a' },
               fontWeight: { id: 'weight' },
               lineHeight: { id: 'lineHeight' },
@@ -458,6 +475,7 @@ describe('text style preparation', () => {
       }),
     );
 
+    expect(preparedStyle['font-size']).toBe('16px');
     expect(preparedStyle['font-family']).toBe('"Inter", Arial, sans-serif');
     expect(preparedStyle['font-weight']).toBe('700');
     expect(preparedStyle['line-height']).toBe('20px');

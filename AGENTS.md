@@ -244,21 +244,21 @@ supported properties:
 - `Variable value` reads the variable collection's default mode. Aliases are
  resolved recursively using each referenced collection's default mode.
 
-Variable modes apply to `font-family`, `font-weight`, `line-height`,
-`letter-spacing`, `font-style`, and `text-indent`. Their corresponding Figma
-fields are `fontFamily`, `fontWeight`, `lineHeight`, `letterSpacing`,
-`fontStyle`, and `paragraphIndent`. Text case and decoration do not support
-variable bindings on Figma text styles.
+Variable modes apply to `font-size`, `font-family`, `font-weight`,
+`line-height`, `letter-spacing`, `font-style`, and `text-indent`. Their
+corresponding Figma fields are `fontSize`, `fontFamily`, `fontWeight`,
+`lineHeight`, `letterSpacing`, `fontStyle`, and `paragraphIndent`. Text case
+and decoration do not support variable bindings on Figma text styles.
 
 For variable values, font families keep the generated
 `"Figma Font Family", Arial, sans-serif` shape with SCSS string escaping.
 Font weights use the same normalization as style values. Common labels such as
 `Regular`, `Semibold`, and `Bold` map to `400`, `600`, and `700`. Integer
 numeric weights from `1` through `1000` are preserved. `italic` and `oblique`
-text is removed before matching. Numeric line-height and letter-spacing
-variables use the unit from the bound text-style property. Numeric paragraph
-indent variables use pixels. Font-style variables use the same normalization
-as the text style's font name.
+text is removed before matching. Numeric font-size and paragraph-indent
+variables use pixels. Numeric line-height and letter-spacing variables use the
+unit from the bound text-style property. Font-style variables use the same
+normalization as the text style's font name.
 
 Missing variables, unresolved or cyclic aliases, unsupported value types, and
 invalid property values fall back to the text style's own value.

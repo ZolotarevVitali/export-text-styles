@@ -22,6 +22,9 @@ export type TFigmaTextStyle = {
   paragraphIndent: number;
   textCase: 'ORIGINAL' | 'UPPER' | 'LOWER' | 'TITLE' | 'SMALL_CAPS' | 'SMALL_CAPS_FORCED';
   boundVariables?: {
+    fontSize?: {
+      id: string;
+    };
     fontFamily?: {
       id: string;
     };

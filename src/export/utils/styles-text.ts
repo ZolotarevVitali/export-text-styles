@@ -45,7 +45,7 @@ export const prepareTextStyles = async ({
     const preparedTextStyle: TPreparedTextStyle = {
       originalName: style.name,
       mixinName,
-      'font-size': Number.isFinite(style.fontSize) ? `${style.fontSize}px` : null,
+      'font-size': await getFontSize({ style, variableMode }),
       'font-family': await getFontFamily({ style, variableMode }),
       'font-weight': await getFontWeight({ style, variableMode }),
       'line-height': await getLineHeight({ style, variableMode }),
@@ -128,6 +128,22 @@ const getUniqueNames = (
   }
 
   return uniqueNames;
+};
+
+const getFontSize = async ({
+  style,
+  variableMode,
+}: {
+  style: TFigmaTextStyle;
+  variableMode: TVariableMode;
+}): Promise<string | null> => {
+  return getVariableAwareValue({
+    variableMode,
+    variableId: style.boundVariables?.fontSize?.id,
+    fallbackValue: normalizePixelValue(style.fontSize),
+    normalizeVariableValue: (value) =>
+      typeof value === 'number' ? normalizePixelValue(value) : null,
+  });
 };
 
 const getFontFamily = async ({
