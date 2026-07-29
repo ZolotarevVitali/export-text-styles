@@ -38,7 +38,7 @@ window.onmessage = async (event) => {
   loadingDiv.classList.remove('active');
   if (msg && msg.type === 'export-text-styles') {
     if (!msg.textStyles) {
-      console.error('No text styles to download');
+      errorDiv.textContent = 'No text styles found';
       return;
     }
     try {
