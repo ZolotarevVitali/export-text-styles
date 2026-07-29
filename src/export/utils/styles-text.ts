@@ -1,32 +1,50 @@
 import { TFigmaTextStyle, TPreparedTextStyle } from '../types';
 import { getVariableNameById } from './variable';
 import { CSS_FONT_WEIGHTS } from '../constants';
+import { escapeScssString, getStableSuffix, normalizeScssIdentifier } from './scss';
+
+type TNameCandidate = {
+  key: string;
+  baseName: string;
+  discriminator: string;
+};
 
 /** Loads local Figma text styles and prepares them for SCSS generation. */
-export async function getTextStyles({ useVariables }: { useVariables: boolean }) {
+export const getTextStyles = async ({
+  useVariables,
+}: {
+  useVariables: boolean;
+}): Promise<Record<string, TPreparedTextStyle[]>> => {
   const textStyles = await figma.getLocalTextStylesAsync();
 
-  return await prepareTextStyles({ textStyles, useVariables });
-}
+  return prepareTextStyles({ textStyles, useVariables });
+};
 
 /** Groups prepared styles by the first segment of their Figma style name. */
-async function prepareTextStyles({
+export const prepareTextStyles = async ({
   textStyles,
   useVariables,
 }: {
   textStyles: TFigmaTextStyle[];
   useVariables: boolean;
-}) {
+}): Promise<Record<string, TPreparedTextStyle[]>> => {
   const preparedTextStyles: Record<string, TPreparedTextStyle[]> = {};
+  const fileNamesByGroup = getTextStyleFileNames(textStyles);
+  const mixinNamesById = getTextStyleMixinNames(textStyles);
 
   for (const style of textStyles) {
-    const fileName = getTextStyleFileName(style.name);
-    //console.log(style);
+    const groupName = getTextStyleGroupName(style.name);
+    const fileName = fileNamesByGroup.get(groupName);
+    const mixinName = mixinNamesById.get(style.id);
 
-    const preparedTextStyle = {
+    if (!fileName || !mixinName) {
+      throw new Error(`Unable to prepare text style "${style.name}".`);
+    }
+
+    const preparedTextStyle: TPreparedTextStyle = {
       originalName: style.name,
-      mixinName: getTextStyleMixinName(style.name),
-      'font-size': style.fontSize ? style.fontSize + 'px' : null,
+      mixinName,
+      'font-size': Number.isFinite(style.fontSize) ? `${style.fontSize}px` : null,
       'font-family': await getFontFamily({ style, useVariables }),
       'font-weight': await getFontWeight({ style, useVariables }),
     };
@@ -39,63 +57,110 @@ async function prepareTextStyles({
   }
 
   return preparedTextStyles;
-}
+};
 
-/** Creates a unique SCSS mixin name from the full Figma style name. */
-function getTextStyleMixinName(name: string) {
-  const normalizedName = normalizeName(name);
-  return 'text-style-' + normalizedName + '-mixin';
-}
+const getTextStyleGroupName = (name: string): string => {
+  return name.split('/')[0];
+};
 
-/** Uses the top-level Figma style group as the output SCSS file name. */
-function getTextStyleFileName(name: string) {
-  const fileName = name.split('/')[0];
-  const normalizedName = normalizeName(fileName);
-  return normalizedName + '.scss';
-}
+const getTextStyleFileNames = (textStyles: TFigmaTextStyle[]): Map<string, string> => {
+  const groupNames = Array.from(new Set(textStyles.map(({ name }) => getTextStyleGroupName(name))));
+  const candidates = groupNames.map((groupName) => ({
+    key: groupName,
+    baseName: normalizeScssIdentifier(groupName),
+    discriminator: groupName,
+  }));
 
-/** Converts Figma naming separators into a lowercase, kebab-case identifier. */
-function normalizeName(name: string) {
-  return name
-    .replace(/[\s/()]+/g, '-')
-    .toLowerCase()
-    .replace(/-+/g, '-');
-}
+  const uniqueNames = getUniqueNames(candidates, new Set(['index']));
 
-async function getFontFamily({
-  style,
-  useVariables,
-}: {
-  style: TFigmaTextStyle;
-  useVariables: boolean;
-}): Promise<string | null> {
-  const variableName = await getVariableNameById(style?.boundVariables?.fontFamily?.id);
+  return new Map(Array.from(uniqueNames, ([groupName, fileName]) => [groupName, `${fileName}.scss`]));
+};
 
-  // Prefer the bound Figma variable when variable-based output is enabled.
-  return useVariables && variableName
-    ? variableName
-    : `'${style.fontName.family}', Arial, sans-serif` || null;
-}
+const getTextStyleMixinNames = (textStyles: TFigmaTextStyle[]): Map<string, string> => {
+  const candidates = textStyles.map((style) => ({
+    key: style.id,
+    baseName: `text-style-${normalizeScssIdentifier(style.name)}-mixin`,
+    discriminator: `${style.name}:${style.id}`,
+  }));
 
-async function getFontWeight({
-  style,
-  useVariables,
-}: {
-  style: TFigmaTextStyle;
-  useVariables: boolean;
-}): Promise<string | null> {
-  const variableName = await getVariableNameById(style?.boundVariables?.fontWeight?.id);
+  return getUniqueNames(candidates);
+};
 
-  // Fall back to the text style value when no usable variable is bound.
-  if (useVariables && variableName) {
-    return variableName;
+const getUniqueNames = (
+  candidates: TNameCandidate[],
+  reservedNames: Set<string> = new Set(),
+): Map<string, string> => {
+  const candidatesByBaseName = new Map<string, TNameCandidate[]>();
+
+  for (const candidate of candidates) {
+    const matchingCandidates = candidatesByBaseName.get(candidate.baseName) ?? [];
+    matchingCandidates.push(candidate);
+    candidatesByBaseName.set(candidate.baseName, matchingCandidates);
   }
 
-  return normalizeFontWeightValue(style?.fontName?.style);
-}
+  const uniqueNames = new Map<string, string>();
+  const usedNames = new Set<string>(reservedNames);
+
+  for (const candidate of [...candidates].sort((first, second) =>
+    first.discriminator.localeCompare(second.discriminator),
+  )) {
+    const matchingCandidates = candidatesByBaseName.get(candidate.baseName) ?? [];
+    const needsSuffix = matchingCandidates.length > 1 || reservedNames.has(candidate.baseName);
+    const suffixedName = `${candidate.baseName}-${getStableSuffix(candidate.discriminator)}`;
+    const desiredName = needsSuffix ? suffixedName : candidate.baseName;
+    let uniqueName = desiredName;
+    let duplicateIndex = 2;
+
+    while (usedNames.has(uniqueName)) {
+      uniqueName = `${desiredName}-${duplicateIndex}`;
+      duplicateIndex += 1;
+    }
+
+    usedNames.add(uniqueName);
+    uniqueNames.set(candidate.key, uniqueName);
+  }
+
+  return uniqueNames;
+};
+
+const getFontFamily = async ({
+  style,
+  useVariables,
+}: {
+  style: TFigmaTextStyle;
+  useVariables: boolean;
+}): Promise<string | null> => {
+  if (useVariables) {
+    const variableName = await getVariableNameById(style.boundVariables?.fontFamily?.id);
+
+    if (variableName) {
+      return variableName;
+    }
+  }
+
+  return `"${escapeScssString(style.fontName.family)}", Arial, sans-serif`;
+};
+
+const getFontWeight = async ({
+  style,
+  useVariables,
+}: {
+  style: TFigmaTextStyle;
+  useVariables: boolean;
+}): Promise<string | null> => {
+  if (useVariables) {
+    const variableName = await getVariableNameById(style.boundVariables?.fontWeight?.id);
+
+    if (variableName) {
+      return variableName;
+    }
+  }
+
+  return normalizeFontWeightValue(style.fontName.style);
+};
 
 /** Maps Figma font style labels and numeric weights to valid CSS weights. */
-function normalizeFontWeightValue(fontWeight: string | undefined): string | null {
+export const normalizeFontWeightValue = (fontWeight: string | undefined): string | null => {
   const normalizedFontWeight = fontWeight
     ?.toLowerCase()
     .replace(/italic|oblique/g, '')
@@ -105,9 +170,13 @@ function normalizeFontWeightValue(fontWeight: string | undefined): string | null
     return null;
   }
 
-  if (/^[1-9]00$/.test(normalizedFontWeight)) {
-    return normalizedFontWeight;
+  if (/^\d{1,4}$/.test(normalizedFontWeight)) {
+    const numericFontWeight = Number(normalizedFontWeight);
+
+    if (numericFontWeight >= 1 && numericFontWeight <= 1000) {
+      return normalizedFontWeight;
+    }
   }
 
   return CSS_FONT_WEIGHTS[normalizedFontWeight] ?? null;
-}
+};

@@ -1,40 +1,42 @@
-Below are the steps to get your plugin running. You can also find instructions at:
+# Export Text Styles
 
-  https://www.figma.com/plugin-docs/plugin-quickstart-guide/
+A Figma plugin that exports local text styles as grouped SCSS mixins in a
+`text-styles.zip` archive.
 
-This plugin template uses Typescript and NPM, two standard tools in creating JavaScript applications.
+## Development
 
-First, download Node.js which comes with NPM. This will allow you to install TypeScript and other
-libraries. You can find the download link here:
+Install dependencies:
 
-  https://nodejs.org/en/download/
+```sh
+npm install
+```
 
-Next, install TypeScript using the command:
+Run regression tests and static checks:
 
-  npm install -g typescript
+```sh
+npm test
+npm run typecheck
+npm run lint
+```
 
-Finally, in the directory of your plugin, get the latest type definitions for the plugin API by running:
+Create production bundles in `dist/`:
 
-  npm install --save-dev @figma/plugin-typings
+```sh
+npm run build
+```
 
-If you are familiar with JavaScript, TypeScript will look very familiar. In fact, valid JavaScript code
-is already valid Typescript code.
+Rebuild development bundles while editing:
 
-TypeScript adds type annotations to variables. This allows code editors such as Visual Studio Code
-to provide information about the Figma API while you are writing code, as well as help catch bugs
-you previously didn't notice.
+```sh
+npm run watch
+```
 
-For more information, visit https://www.typescriptlang.org/
+## Test in Figma
 
-Using TypeScript requires a compiler to convert TypeScript (code.ts) into JavaScript (code.js)
-for the browser to run.
+1. Build the plugin.
+2. Import or reload it using `manifest.json`.
+3. Open a file containing local text styles.
+4. Export with “Use variables” enabled and disabled.
+5. Inspect the generated mixins and `index.scss` inside the downloaded ZIP.
 
-We recommend writing TypeScript code using Visual Studio code:
-
-1. Download Visual Studio Code if you haven't already: https://code.visualstudio.com/.
-2. Open this directory in Visual Studio Code.
-3. Compile TypeScript to JavaScript: Run the "Terminal > Run Build Task..." menu item,
-    then select "npm: watch". You will have to do this again every time
-    you reopen Visual Studio Code.
-
-That's it! Visual Studio Code will regenerate the JavaScript file every time you save.
+See `AGENTS.md` for the export contract and repository architecture.

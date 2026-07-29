@@ -1,4 +1,5 @@
 export type TFigmaTextStyle = {
+  id: string;
   name: string;
   fontSize: number;
   fontName: {
@@ -22,3 +23,5 @@ export type TPreparedTextStyle = {
   'font-family': string | null;
   'font-weight': string | null;
 };
+
+export type TTextStyleFiles = Record<string, string>;

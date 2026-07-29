@@ -1,49 +1,59 @@
-import { TPreparedTextStyle } from '../types';
+import { TPreparedTextStyle, TTextStyleFiles } from '../types';
 import { getTextStyles } from '../utils/styles-text';
+import { escapeScssComment } from '../utils/scss';
 
 /** Builds the SCSS mixin files and their shared index from local text styles. */
-export async function exportTextStyles({ useVariables }: { useVariables: boolean }) {
+export const exportTextStyles = async ({
+  useVariables,
+}: {
+  useVariables: boolean;
+}): Promise<TTextStyleFiles | null> => {
   const textStyles = await getTextStyles({ useVariables });
 
-  const textStylesFiles: Record<string, string> = {};
+  return buildTextStyleFiles(textStyles);
+};
 
+export const buildTextStyleFiles = (
+  textStyles: Record<string, TPreparedTextStyle[]>,
+): TTextStyleFiles | null => {
   if (Object.keys(textStyles).length === 0) {
     return null;
   }
+
+  const textStylesFiles: TTextStyleFiles = {};
 
   Object.entries(textStyles).forEach(([fileName, textStyles]) => {
     textStylesFiles[fileName] = getTextStylesFileContent(textStyles);
   });
 
   return { ...textStylesFiles, 'index.scss': getIndexFileContent(textStyles) };
-}
+};
 
 /** Joins all generated mixins assigned to a single SCSS file. */
-function getTextStylesFileContent(textStyles: TPreparedTextStyle[]) {
+const getTextStylesFileContent = (textStyles: TPreparedTextStyle[]): string => {
   return textStyles
-    .map((textStyle) => {
-      return getTextStyleMixinContent(textStyle);
-    })
+    .map((textStyle) => getTextStyleMixinContent(textStyle))
     .join('\n\n');
-}
+};
 
 /** Serializes one prepared text style as a documented SCSS mixin. */
-function getTextStyleMixinContent(textStyle: TPreparedTextStyle) {
+export const getTextStyleMixinContent = (textStyle: TPreparedTextStyle): string => {
   const { mixinName, originalName, ...props } = textStyle;
-  const description = `/*figma style name: ${originalName}*/\n`;
+  const description = `/*figma style name: ${escapeScssComment(originalName)}*/\n`;
   const mixinContent = Object.entries(props)
-    .filter(([_, value]) => !!value)
+    .filter(([, value]) => Boolean(value))
     .map(([key, value]) => `\t${key}: ${value};`)
     .join('\n');
+
   return `${description}@mixin ${mixinName} {\n${mixinContent}\n}`;
-}
+};
 
 /** Generates an index that imports every text-style SCSS file. */
-function getIndexFileContent(textStyles: Record<string, TPreparedTextStyle[]>): string {
-  let fileContent = '';
-
-  for (const key of Object.keys(textStyles)) {
-    fileContent += `@import './${key.replace('.scss', '')}';\n`;
-  }
-  return fileContent;
-}
+export const getIndexFileContent = (
+  textStyles: Record<string, TPreparedTextStyle[]>,
+): string => {
+  return Object.keys(textStyles)
+    .map((fileName) => `@import './${fileName.replace(/\.scss$/, '')}';`)
+    .join('\n')
+    .concat('\n');
+};

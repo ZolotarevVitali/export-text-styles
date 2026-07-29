@@ -25,6 +25,7 @@ and must not be treated as current behavior.
 - Imperative HTML/DOM UI; this project does not use React
 - Webpack and `ts-loader`
 - JSZip for creating the downloadable archive
+- Vitest and Dart Sass for regression tests
 - ESLint with TypeScript and Figma plugin rules
 
 Figma plugins run in two separate environments:
@@ -43,8 +44,11 @@ The current message and export flow is:
 
 ```text
 Export button click in src/ui.ts
-  -> parent.postMessage({ pluginMessage: { type: 'export', useVariables } })
+  -> parent.postMessage({
+       pluginMessage: { type: 'export', requestId, useVariables }
+     })
   -> figma.ui.onmessage in src/code.ts
+  -> handleExportRequest(message)
   -> exportTextStyles({ useVariables })
   -> getTextStyles({ useVariables })
   -> figma.getLocalTextStylesAsync()
@@ -52,6 +56,7 @@ Export button click in src/ui.ts
   -> build Record<fileName, scssContent> plus index.scss
   -> figma.ui.postMessage({
        type: 'export-text-styles',
+       requestId,
        textStyles
      })
   -> window.onmessage in src/ui.ts
@@ -62,8 +67,10 @@ Export button click in src/ui.ts
 If no local text styles exist, `exportTextStyles` returns `null` and the UI
 shows `No text styles found`.
 
-When changing this protocol, update both sender and receiver together and keep
-the message type strings synchronized.
+Failures produce `export-text-styles-error` with the matching `requestId`, clear
+the loading state, and display an error. When changing this protocol, update
+both sender and receiver together and keep message types synchronized in
+`src/messages.ts`.
 
 ## Source map
 
@@ -71,6 +78,9 @@ the message type strings synchronized.
 - `ui.html` — UI markup and styles used as the Webpack HTML template.
 - `public/vzlogo.png` — logo imported and inlined into the built UI.
 - `src/code.ts` — plugin sandbox entry point and UI message handler.
+- `src/export-request.ts` — request execution and success/error response
+  creation.
+- `src/messages.ts` — shared plugin request and response types.
 - `src/ui.ts` — iframe entry point, controls, archive generation, and download.
 - `src/custom.d.ts` — asset module declarations.
 - `src/export/constants.ts` — mapping from Figma font-style labels to CSS font
@@ -79,8 +89,10 @@ the message type strings synchronized.
 - `src/export/export-text-styles/index.ts` — SCSS mixin and index serialization.
 - `src/export/utils/styles-text.ts` — style loading, grouping, naming, and
   typography value preparation.
+- `src/export/utils/scss.ts` — SCSS-safe naming, escaping, and stable suffixes.
 - `src/export/utils/variable.ts` — Figma variable lookup and CSS custom-property
   name preparation.
+- `src/export/export.test.ts` — exporter and message regression tests.
 - `webpack.config.js` — builds the sandbox and UI bundles.
 - `dist/code.js` and `dist/ui.html` — generated artifacts loaded by Figma.
 
@@ -100,7 +112,7 @@ to them. After changing source code, run `npm run build` and include the
 corresponding generated changes.
 
 `package-lock.json` is npm-generated. Update it through npm rather than editing
-it manually.
+it manually. `node_modules` is ignored and must not be committed.
 
 ## Export contract
 
@@ -120,17 +132,24 @@ contains one `@import` for each generated group file.
 
 ### Naming
 
-Style names are normalized by:
+Style and group names are normalized by:
 
-1. Replacing whitespace, `/`, `(`, and `)` runs with `-`.
-2. Converting to lowercase.
-3. Collapsing repeated `-` characters.
+1. Converting compatible accented Latin characters to their base form.
+2. Replacing non-alphanumeric runs with `-`.
+3. Converting to lowercase and trimming repeated/edge `-` characters.
+4. Falling back to `unnamed` when no identifier characters remain.
 
 Mixin names use the full normalized Figma style name:
 
 ```text
 Heading/H1 -> text-style-heading-h1-mixin
 ```
+
+Names remain unchanged when their normalized result is unique. If distinct
+groups or styles normalize to the same name, every conflicting output receives
+a stable hash suffix. Mixin suffixes include the Figma style ID so duplicate
+style names are preserved. The reserved `index` group is always suffixed so it
+cannot overwrite `index.scss`.
 
 Variable names are converted to lowercase and `/`, `.`, and spaces are replaced
 with `-`:
@@ -160,7 +179,7 @@ The generated shape is:
 /*figma style name: Heading/H1*/
 @mixin text-style-heading-h1-mixin {
 	font-size: 24px;
-	font-family: 'Inter', Arial, sans-serif;
+	font-family: "Inter", Arial, sans-serif;
 	font-weight: 700;
 }
 ```
@@ -176,11 +195,11 @@ properties.
 - When enabled and a usable variable is bound to `fontFamily` or `fontWeight`,
   the exporter emits `var(--normalized-variable-name)`.
 - When disabled, missing, or unresolved, `font-family` falls back to
-  `'Figma Font Family', Arial, sans-serif`.
+  `"Figma Font Family", Arial, sans-serif`, with SCSS string escaping.
 - `font-weight` falls back to a normalized value from the Figma font style.
   Common labels such as `Regular`, `Semibold`, and `Bold` map to `400`, `600`,
-  and `700`. Numeric weights from `100` through `900` are preserved. `italic`
-  and `oblique` text is removed before matching.
+  and `700`. Integer numeric weights from `1` through `1000` are preserved.
+  `italic` and `oblique` text is removed before matching.
 
 Only variables bound to the supported text-style properties are resolved. This
 is not a general Figma variables exporter.
@@ -219,11 +238,15 @@ Create a one-time build:
 npm run build
 ```
 
+This creates production bundles without inline source maps.
+
 Rebuild continuously during development:
 
 ```sh
 npm run watch
 ```
+
+This creates development bundles continuously.
 
 Run static checks:
 
@@ -237,8 +260,17 @@ Apply supported ESLint fixes:
 npm run lint:fix
 ```
 
-There is currently no automated test script or test suite. Do not claim tests
-passed when only linting and building were run.
+Run regression tests:
+
+```sh
+npm test
+```
+
+Run strict type checks for plugin and test code:
+
+```sh
+npm run typecheck
+```
 
 To test manually in Figma:
 
@@ -275,11 +307,13 @@ To test manually in Figma:
 
 For normal source changes:
 
-1. Run `npm run lint`.
-2. Run `npm run build`.
-3. Review generated `dist` changes and confirm they correspond to source
+1. Run `npm test`.
+2. Run `npm run typecheck`.
+3. Run `npm run lint`.
+4. Run `npm run build`.
+5. Review generated `dist` changes and confirm they correspond to source
    changes.
-4. Manually test in Figma when the change affects runtime behavior or generated
+6. Manually test in Figma when the change affects runtime behavior or generated
    SCSS.
 
 For documentation-only changes, verify paths, commands, and behavior against

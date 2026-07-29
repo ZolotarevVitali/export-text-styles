@@ -1,73 +1,116 @@
 import JSZip from 'jszip';
 import logo from '../public/vzlogo.png';
+import { TExportRequestMessage, TPluginResponseMessage } from './messages';
 
-// Make JSZip available globally for the UI
-declare global {
-  interface Window {
-    JSZip: typeof JSZip;
+const getRequiredElement = <TElement extends HTMLElement>(id: string): TElement => {
+  const element = document.getElementById(id);
+
+  if (!element) {
+    throw new Error(`Required UI element "#${id}" was not found.`);
   }
-}
 
-window.JSZip = JSZip;
-
-const loadingDiv = document.getElementById('loading') as HTMLDivElement;
-
-// Initialize
-// Set the logo
-const logoImg = document.querySelector('.logo') as HTMLImageElement;
-if (logoImg) {
-  logoImg.src = logo;
-}
-
-const checkboxUseVariables = document.getElementById('checkbox-use-variables') as HTMLInputElement;
-
-document.getElementById('export')!.onclick = () => {
-  loadingDiv.classList.add('active');
-  const useVariables = checkboxUseVariables.checked;
-  parent.postMessage({ pluginMessage: { type: 'export', useVariables } }, '*');
+  return element as TElement;
 };
 
-const errorDiv = document.getElementById('error') as HTMLDivElement;
-const divMessage = document.getElementById('message') as HTMLDivElement;
+const loadingDiv = getRequiredElement<HTMLDivElement>('loading');
+const exportButton = getRequiredElement<HTMLButtonElement>('export');
+const checkboxUseVariables =
+  getRequiredElement<HTMLInputElement>('checkbox-use-variables');
+const errorDiv = getRequiredElement<HTMLDivElement>('error');
+const messageDiv = getRequiredElement<HTMLDivElement>('message');
+const logoImage = document.querySelector<HTMLImageElement>('.logo');
+let activeRequestId: string | null = null;
 
-// Handle the export message from the plugin
-window.onmessage = async (event) => {
+if (logoImage) {
+  logoImage.src = logo;
+}
+
+const setBusy = (isBusy: boolean): void => {
+  exportButton.disabled = isBusy;
+  exportButton.setAttribute('aria-busy', String(isBusy));
+  loadingDiv.classList.toggle('active', isBusy);
+  loadingDiv.setAttribute('aria-hidden', String(!isBusy));
+};
+
+const finishRequest = (): void => {
+  activeRequestId = null;
+  setBusy(false);
+};
+
+const handleExport = (): void => {
+  if (activeRequestId) {
+    return;
+  }
+
   errorDiv.textContent = '';
-  divMessage.textContent = '';
-  const msg = event.data.pluginMessage;
-  loadingDiv.classList.remove('active');
-  if (msg && msg.type === 'export-text-styles') {
-    if (!msg.textStyles) {
-      errorDiv.textContent = 'No text styles found';
-      return;
-    }
-    try {
-      const zip = new JSZip();
+  messageDiv.textContent = '';
+  activeRequestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  setBusy(true);
 
-      for (const token of Object.keys(msg.textStyles)) {
-        zip.file(token, msg.textStyles[token]);
-      }
+  const message: TExportRequestMessage = {
+    type: 'export',
+    requestId: activeRequestId,
+    useVariables: checkboxUseVariables.checked,
+  };
 
-      const content = await zip.generateAsync({ type: 'base64' });
+  parent.postMessage({ pluginMessage: message }, '*');
+};
 
-      // Create a download link
-      const a = document.createElement('a');
-      a.href = 'data:application/zip;base64,' + content;
-      a.download = 'text-styles.zip';
+const downloadTextStyles = async (
+  textStyles: NonNullable<
+    Extract<TPluginResponseMessage, { type: 'export-text-styles' }>['textStyles']
+  >,
+): Promise<void> => {
+  const zip = new JSZip();
 
-      // Trigger the download
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+  for (const [fileName, content] of Object.entries(textStyles)) {
+    zip.file(fileName, content);
+  }
 
-      // Clean up
-      URL.revokeObjectURL(a.href);
-    } catch (error: unknown) {
-      console.error('Error handling file download:', error);
-      // Show error to user
+  const zipBlob = await zip.generateAsync({ type: 'blob' });
+  const downloadUrl = URL.createObjectURL(zipBlob);
+  const downloadLink = document.createElement('a');
 
-      errorDiv.textContent =
-        'Error downloading file: ' + (error instanceof Error ? error.message : String(error));
-    }
+  downloadLink.href = downloadUrl;
+  downloadLink.download = 'text-styles.zip';
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  downloadLink.remove();
+  URL.revokeObjectURL(downloadUrl);
+};
+
+const handlePluginMessage = async (
+  event: MessageEvent<{ pluginMessage?: TPluginResponseMessage }>,
+): Promise<void> => {
+  const message = event.data?.pluginMessage;
+
+  if (!message || message.requestId !== activeRequestId) {
+    return;
+  }
+
+  if (message.type === 'export-text-styles-error') {
+    errorDiv.textContent = `Export failed: ${message.error}`;
+    finishRequest();
+    return;
+  }
+
+  if (!message.textStyles) {
+    errorDiv.textContent = 'No text styles found';
+    finishRequest();
+    return;
+  }
+
+  try {
+    await downloadTextStyles(message.textStyles);
+    messageDiv.textContent = 'Text styles exported successfully';
+  } catch (error: unknown) {
+    console.error('Error downloading text styles:', error);
+    errorDiv.textContent =
+      'Error downloading file: ' + (error instanceof Error ? error.message : String(error));
+  } finally {
+    finishRequest();
   }
 };
+
+exportButton.addEventListener('click', handleExport);
+window.addEventListener('message', handlePluginMessage);
