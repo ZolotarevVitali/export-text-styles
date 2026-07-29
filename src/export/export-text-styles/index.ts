@@ -3,6 +3,10 @@ import { getTextStyles } from '../utils/styles-text';
 import { escapeScssComment } from '../utils/scss';
 import type { TVariableMode } from '../../messages';
 
+const formatFigmaStyleLabel = (name: string): string => {
+  return name.replace(/\s*\/\s*-?\s*/g, ' -/- ');
+};
+
 /** Builds the SCSS mixin files and their shared index from local text styles. */
 export const exportTextStyles = async ({
   variableMode,
@@ -40,7 +44,8 @@ const getTextStylesFileContent = (textStyles: TPreparedTextStyle[]): string => {
 /** Serializes one prepared text style as a documented SCSS mixin. */
 export const getTextStyleMixinContent = (textStyle: TPreparedTextStyle): string => {
   const { mixinName, originalName, ...props } = textStyle;
-  const description = `/*figma style name: ${escapeScssComment(originalName)}*/\n`;
+  const styleLabel = formatFigmaStyleLabel(originalName);
+  const description = `/*figma style name: ${escapeScssComment(styleLabel)}*/\n`;
   const mixinContent = Object.entries(props)
     .filter(([, value]) => Boolean(value))
     .map(([key, value]) => `\t${key}: ${value};`)
