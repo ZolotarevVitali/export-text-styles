@@ -1,7 +1,8 @@
 import { TFigmaTextStyle, TPreparedTextStyle } from '../types';
-import { getVariableNameById } from './variable';
+import { getVariableNameById, getVariableValueById } from './variable';
 import { CSS_FONT_WEIGHTS } from '../constants';
 import { escapeScssString, getStableSuffix, normalizeScssIdentifier } from './scss';
+import type { TVariableMode } from '../../messages';
 
 type TNameCandidate = {
   key: string;
@@ -11,22 +12,22 @@ type TNameCandidate = {
 
 /** Loads local Figma text styles and prepares them for SCSS generation. */
 export const getTextStyles = async ({
-  useVariables,
+  variableMode,
 }: {
-  useVariables: boolean;
+  variableMode: TVariableMode;
 }): Promise<Record<string, TPreparedTextStyle[]>> => {
   const textStyles = await figma.getLocalTextStylesAsync();
 
-  return prepareTextStyles({ textStyles, useVariables });
+  return prepareTextStyles({ textStyles, variableMode });
 };
 
 /** Groups prepared styles by the first segment of their Figma style name. */
 export const prepareTextStyles = async ({
   textStyles,
-  useVariables,
+  variableMode,
 }: {
   textStyles: TFigmaTextStyle[];
-  useVariables: boolean;
+  variableMode: TVariableMode;
 }): Promise<Record<string, TPreparedTextStyle[]>> => {
   const preparedTextStyles: Record<string, TPreparedTextStyle[]> = {};
   const fileNamesByGroup = getTextStyleFileNames(textStyles);
@@ -45,8 +46,8 @@ export const prepareTextStyles = async ({
       originalName: style.name,
       mixinName,
       'font-size': Number.isFinite(style.fontSize) ? `${style.fontSize}px` : null,
-      'font-family': await getFontFamily({ style, useVariables }),
-      'font-weight': await getFontWeight({ style, useVariables }),
+      'font-family': await getFontFamily({ style, variableMode }),
+      'font-weight': await getFontWeight({ style, variableMode }),
     };
 
     if (!preparedTextStyles[fileName]) {
@@ -125,16 +126,24 @@ const getUniqueNames = (
 
 const getFontFamily = async ({
   style,
-  useVariables,
+  variableMode,
 }: {
   style: TFigmaTextStyle;
-  useVariables: boolean;
+  variableMode: TVariableMode;
 }): Promise<string | null> => {
-  if (useVariables) {
+  if (variableMode === 'name') {
     const variableName = await getVariableNameById(style.boundVariables?.fontFamily?.id);
 
     if (variableName) {
       return variableName;
+    }
+  }
+
+  if (variableMode === 'value') {
+    const variableValue = await getVariableValueById(style.boundVariables?.fontFamily?.id);
+
+    if (typeof variableValue === 'string' && variableValue) {
+      return `"${escapeScssString(variableValue)}", Arial, sans-serif`;
     }
   }
 
@@ -143,16 +152,25 @@ const getFontFamily = async ({
 
 const getFontWeight = async ({
   style,
-  useVariables,
+  variableMode,
 }: {
   style: TFigmaTextStyle;
-  useVariables: boolean;
+  variableMode: TVariableMode;
 }): Promise<string | null> => {
-  if (useVariables) {
+  if (variableMode === 'name') {
     const variableName = await getVariableNameById(style.boundVariables?.fontWeight?.id);
 
     if (variableName) {
       return variableName;
+    }
+  }
+
+  if (variableMode === 'value') {
+    const variableValue = await getVariableValueById(style.boundVariables?.fontWeight?.id);
+    const normalizedVariableValue = normalizeFontWeightValue(String(variableValue ?? ''));
+
+    if (normalizedVariableValue) {
+      return normalizedVariableValue;
     }
   }
 

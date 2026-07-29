@@ -45,12 +45,12 @@ The current message and export flow is:
 ```text
 Export button click in src/ui.ts
   -> parent.postMessage({
-       pluginMessage: { type: 'export', requestId, useVariables }
+       pluginMessage: { type: 'export', requestId, variableMode }
      })
   -> figma.ui.onmessage in src/code.ts
   -> handleExportRequest(message)
-  -> exportTextStyles({ useVariables })
-  -> getTextStyles({ useVariables })
+  -> exportTextStyles({ variableMode })
+  -> getTextStyles({ variableMode })
   -> figma.getLocalTextStylesAsync()
   -> prepare and group styles
   -> build Record<fileName, scssContent> plus index.scss
@@ -71,6 +71,11 @@ Failures produce `export-text-styles-error` with the matching `requestId`, clear
 the loading state, and display an error. When changing this protocol, update
 both sender and receiver together and keep message types synchronized in
 `src/messages.ts`.
+
+The variable mode defaults to `name`. On startup, the sandbox restores the
+last valid selection from `figma.clientStorage` and sends it to the UI. Select
+changes send `save-variable-mode` back to the sandbox for plugin-scoped local
+persistence.
 
 ## Source map
 
@@ -203,17 +208,23 @@ formatting changes when fixing behavior.
 
 ### Variable behavior
 
-The UI checkbox controls whether bound Figma variables are used for supported
-properties.
+The UI “Apply variables” select controls how bound Figma variables are used for
+supported properties:
 
-- When enabled and a usable variable is bound to `fontFamily` or `fontWeight`,
-  the exporter emits `var(--normalized-variable-name)`.
-- When disabled, missing, or unresolved, `font-family` falls back to
-  `"Figma Font Family", Arial, sans-serif`, with SCSS string escaping.
-- `font-weight` falls back to a normalized value from the Figma font style.
-  Common labels such as `Regular`, `Semibold`, and `Bold` map to `400`, `600`,
-  and `700`. Integer numeric weights from `1` through `1000` are preserved.
-  `italic` and `oblique` text is removed before matching.
+- `None` emits the text style's own `fontFamily` and `fontWeight` values.
+- `Variable name` emits `var(--normalized-variable-name)` and is the default.
+- `Variable value` reads the variable collection's default mode. Aliases are
+ resolved recursively using each referenced collection's default mode.
+
+For variable values, font families keep the generated
+`"Figma Font Family", Arial, sans-serif` shape with SCSS string escaping.
+Font weights use the same normalization as style values. Common labels such as
+`Regular`, `Semibold`, and `Bold` map to `400`, `600`, and `700`. Integer
+numeric weights from `1` through `1000` are preserved. `italic` and `oblique`
+text is removed before matching.
+
+Missing variables, unresolved or cyclic aliases, unsupported value types, and
+invalid property values fall back to the text style's own value.
 
 Only variables bound to the supported text-style properties are resolved. This
 is not a general Figma variables exporter.
@@ -291,7 +302,7 @@ To test manually in Figma:
 1. Build the project.
 2. Import or reload the plugin using `manifest.json`.
 3. Open a file containing local text styles.
-4. Test export with the variable checkbox enabled and disabled.
+4. Test export with None, Variable name, and Variable value selected.
 5. Inspect the downloaded ZIP, generated group files, mixin values, and
    `index.scss`.
 6. Also test a file with no local text styles and confirm the empty-state

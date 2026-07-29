@@ -12,7 +12,7 @@ export const handleExportRequest = async (
   handleExportTextStyles: TExportTextStyles = exportTextStyles,
 ): Promise<TPluginResponseMessage> => {
   try {
-    const textStyles = await handleExportTextStyles({ useVariables: message.useVariables });
+    const textStyles = await handleExportTextStyles({ variableMode: message.variableMode });
 
     return {
       type: 'export-text-styles',

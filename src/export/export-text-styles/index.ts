@@ -1,14 +1,15 @@
 import { TPreparedTextStyle, TTextStyleFiles } from '../types';
 import { getTextStyles } from '../utils/styles-text';
 import { escapeScssComment } from '../utils/scss';
+import type { TVariableMode } from '../../messages';
 
 /** Builds the SCSS mixin files and their shared index from local text styles. */
 export const exportTextStyles = async ({
-  useVariables,
+  variableMode,
 }: {
-  useVariables: boolean;
+  variableMode: TVariableMode;
 }): Promise<TTextStyleFiles | null> => {
-  const textStyles = await getTextStyles({ useVariables });
+  const textStyles = await getTextStyles({ variableMode });
 
   return buildTextStyleFiles(textStyles);
 };

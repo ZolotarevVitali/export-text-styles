@@ -1,6 +1,13 @@
 import JSZip from 'jszip';
 import logo from '../public/vzlogo.png';
-import { TExportRequestMessage, TPluginResponseMessage } from './messages';
+import {
+  DEFAULT_VARIABLE_MODE,
+  isVariableMode,
+  TExportRequestMessage,
+  TPluginResponseMessage,
+  TSaveVariableModeMessage,
+  TVariableMode,
+} from './messages';
 
 const getRequiredElement = <TElement extends HTMLElement>(id: string): TElement => {
   const element = document.getElementById(id);
@@ -14,8 +21,7 @@ const getRequiredElement = <TElement extends HTMLElement>(id: string): TElement 
 
 const loadingDiv = getRequiredElement<HTMLDivElement>('loading');
 const exportButton = getRequiredElement<HTMLButtonElement>('export');
-const checkboxUseVariables =
-  getRequiredElement<HTMLInputElement>('checkbox-use-variables');
+const variableModeSelect = getRequiredElement<HTMLSelectElement>('variable-mode');
 const errorDiv = getRequiredElement<HTMLDivElement>('error');
 const messageDiv = getRequiredElement<HTMLDivElement>('message');
 const logoImage = document.querySelector<HTMLImageElement>('.logo');
@@ -37,6 +43,24 @@ const finishRequest = (): void => {
   setBusy(false);
 };
 
+const getSelectedVariableMode = (): TVariableMode => {
+  if (isVariableMode(variableModeSelect.value)) {
+    return variableModeSelect.value;
+  }
+
+  variableModeSelect.value = DEFAULT_VARIABLE_MODE;
+  return DEFAULT_VARIABLE_MODE;
+};
+
+const handleVariableModeChange = (): void => {
+  const message: TSaveVariableModeMessage = {
+    type: 'save-variable-mode',
+    variableMode: getSelectedVariableMode(),
+  };
+
+  parent.postMessage({ pluginMessage: message }, '*');
+};
+
 const handleExport = (): void => {
   if (activeRequestId) {
     return;
@@ -50,7 +74,7 @@ const handleExport = (): void => {
   const message: TExportRequestMessage = {
     type: 'export',
     requestId: activeRequestId,
-    useVariables: checkboxUseVariables.checked,
+    variableMode: getSelectedVariableMode(),
   };
 
   parent.postMessage({ pluginMessage: message }, '*');
@@ -84,7 +108,16 @@ const handlePluginMessage = async (
 ): Promise<void> => {
   const message = event.data?.pluginMessage;
 
-  if (!message || message.requestId !== activeRequestId) {
+  if (!message) {
+    return;
+  }
+
+  if (message.type === 'variable-mode') {
+    variableModeSelect.value = message.variableMode;
+    return;
+  }
+
+  if (message.requestId !== activeRequestId) {
     return;
   }
 
@@ -113,4 +146,5 @@ const handlePluginMessage = async (
 };
 
 exportButton.addEventListener('click', handleExport);
+variableModeSelect.addEventListener('change', handleVariableModeChange);
 window.addEventListener('message', handlePluginMessage);

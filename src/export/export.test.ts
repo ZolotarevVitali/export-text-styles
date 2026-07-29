@@ -1,5 +1,5 @@
 import { compileString } from 'sass';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handleExportRequest } from '../export-request';
 import { buildTextStyleFiles } from './export-text-styles';
 import { TFigmaTextStyle } from './types';
@@ -10,11 +10,13 @@ const createTextStyle = ({
   name,
   fontFamily = 'Inter',
   fontStyle = 'Regular',
+  boundVariables,
 }: {
   id: string;
   name: string;
   fontFamily?: string;
   fontStyle?: string;
+  boundVariables?: TFigmaTextStyle['boundVariables'];
 }): TFigmaTextStyle => ({
   id,
   name,
@@ -23,13 +25,51 @@ const createTextStyle = ({
     family: fontFamily,
     style: fontStyle,
   },
+  boundVariables,
+});
+
+const getOnlyPreparedStyle = (
+  preparedStyles: Awaited<ReturnType<typeof prepareTextStyles>>,
+) => {
+  return Object.values(preparedStyles).flat()[0];
+};
+
+type TMockVariable = {
+  id: string;
+  name: string;
+  variableCollectionId: string;
+  valuesByMode: Record<string, VariableValue>;
+};
+
+type TMockVariableCollection = {
+  id: string;
+  defaultModeId: string;
+};
+
+const stubFigmaVariables = ({
+  variables,
+  collections,
+}: {
+  variables: Record<string, TMockVariable>;
+  collections: Record<string, TMockVariableCollection>;
+}): void => {
+  vi.stubGlobal('figma', {
+    variables: {
+      getVariableByIdAsync: vi.fn(async (id: string) => variables[id] ?? null),
+      getVariableCollectionByIdAsync: vi.fn(async (id: string) => collections[id] ?? null),
+    },
+  });
+};
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('text style preparation', () => {
   it('reserves index.scss for the generated import index', async () => {
     const preparedStyles = await prepareTextStyles({
       textStyles: [createTextStyle({ id: 'index-title', name: 'Index/Title' })],
-      useVariables: false,
+      variableMode: 'none',
     });
     const [groupFileName] = Object.keys(preparedStyles);
     const files = buildTextStyleFiles(preparedStyles);
@@ -44,10 +84,10 @@ describe('text style preparation', () => {
       createTextStyle({ id: 'slash', name: 'Heading/H1' }),
       createTextStyle({ id: 'hyphen', name: 'Heading-H1' }),
     ];
-    const firstResult = await prepareTextStyles({ textStyles: styles, useVariables: false });
+    const firstResult = await prepareTextStyles({ textStyles: styles, variableMode: 'none' });
     const secondResult = await prepareTextStyles({
       textStyles: [...styles].reverse(),
-      useVariables: false,
+      variableMode: 'none',
     });
     const getMixinNamesByOriginalName = (
       preparedStyles: Awaited<ReturnType<typeof prepareTextStyles>>,
@@ -72,7 +112,7 @@ describe('text style preparation', () => {
         createTextStyle({ id: 'space-group', name: 'Heading One/H1' }),
         createTextStyle({ id: 'hyphen-group', name: 'Heading-One/H2' }),
       ],
-      useVariables: false,
+      variableMode: 'none',
     });
     const fileNames = Object.keys(preparedStyles);
 
@@ -88,7 +128,7 @@ describe('text style preparation', () => {
         createTextStyle({ id: 'duplicate-1', name: 'Body/Regular' }),
         createTextStyle({ id: 'duplicate-2', name: 'Body/Regular' }),
       ],
-      useVariables: false,
+      variableMode: 'none',
     });
     const mixinNames = Object.values(preparedStyles)
       .flat()
@@ -102,11 +142,11 @@ describe('text style preparation', () => {
   it('creates safe names for special and empty group names', async () => {
     const specialNames = await prepareTextStyles({
       textStyles: [createTextStyle({ id: 'special', name: 'Heading & Lead/Title:' })],
-      useVariables: false,
+      variableMode: 'none',
     });
     const emptyGroup = await prepareTextStyles({
       textStyles: [createTextStyle({ id: 'empty', name: '/Caption' })],
-      useVariables: false,
+      variableMode: 'none',
     });
 
     expect(Object.keys(specialNames)).toEqual(['heading-lead.scss']);
@@ -125,7 +165,7 @@ describe('text style preparation', () => {
           fontFamily: 'Rock\'n"Roll',
         }),
       ],
-      useVariables: false,
+      variableMode: 'none',
     });
     const [preparedStyle] = Object.values(preparedStyles).flat();
     const files = buildTextStyleFiles(preparedStyles);
@@ -137,6 +177,146 @@ describe('text style preparation', () => {
     expect(() =>
       compileString(`${groupContent}\n.example { @include ${preparedStyle.mixinName}; }`),
     ).not.toThrow();
+  });
+
+  it('supports none, variable name, and variable value modes', async () => {
+    stubFigmaVariables({
+      variables: {
+        family: {
+          id: 'family',
+          name: 'Typography/Font.Family',
+          variableCollectionId: 'typography',
+          valuesByMode: { default: 'Avenir "Next"' },
+        },
+        weight: {
+          id: 'weight',
+          name: 'Typography/Font Weight',
+          variableCollectionId: 'typography',
+          valuesByMode: { default: 650 },
+        },
+      },
+      collections: {
+        typography: { id: 'typography', defaultModeId: 'default' },
+      },
+    });
+    const textStyles = [
+      createTextStyle({
+        id: 'body',
+        name: 'Body/Default',
+        boundVariables: {
+          fontFamily: { id: 'family' },
+          fontWeight: { id: 'weight' },
+        },
+      }),
+    ];
+
+    const styleValues = getOnlyPreparedStyle(
+      await prepareTextStyles({ textStyles, variableMode: 'none' }),
+    );
+    const variableNames = getOnlyPreparedStyle(
+      await prepareTextStyles({ textStyles, variableMode: 'name' }),
+    );
+    const variableValues = getOnlyPreparedStyle(
+      await prepareTextStyles({ textStyles, variableMode: 'value' }),
+    );
+
+    expect(styleValues['font-family']).toBe('"Inter", Arial, sans-serif');
+    expect(styleValues['font-weight']).toBe('400');
+    expect(variableNames['font-family']).toBe('var(--typography-font-family)');
+    expect(variableNames['font-weight']).toBe('var(--typography-font-weight)');
+    expect(variableValues['font-family']).toBe('"Avenir \\"Next\\"", Arial, sans-serif');
+    expect(variableValues['font-weight']).toBe('650');
+  });
+
+  it('resolves aliases through each collection default mode', async () => {
+    stubFigmaVariables({
+      variables: {
+        family: {
+          id: 'family',
+          name: 'Typography/Font Family',
+          variableCollectionId: 'semantic',
+          valuesByMode: {
+            default: { type: 'VARIABLE_ALIAS', id: 'family-value' },
+            alternate: 'Wrong Mode',
+          },
+        },
+        'family-value': {
+          id: 'family-value',
+          name: 'Primitives/Font Family',
+          variableCollectionId: 'primitives',
+          valuesByMode: {
+            default: 'Source Sans 3',
+            alternate: 'Wrong Alias Mode',
+          },
+        },
+      },
+      collections: {
+        semantic: { id: 'semantic', defaultModeId: 'default' },
+        primitives: { id: 'primitives', defaultModeId: 'default' },
+      },
+    });
+    const preparedStyle = getOnlyPreparedStyle(
+      await prepareTextStyles({
+        textStyles: [
+          createTextStyle({
+            id: 'alias',
+            name: 'Body/Alias',
+            boundVariables: { fontFamily: { id: 'family' } },
+          }),
+        ],
+        variableMode: 'value',
+      }),
+    );
+
+    expect(preparedStyle['font-family']).toBe('"Source Sans 3", Arial, sans-serif');
+  });
+
+  it('falls back to style values for cyclic aliases and unsupported values', async () => {
+    stubFigmaVariables({
+      variables: {
+        'family-a': {
+          id: 'family-a',
+          name: 'Family A',
+          variableCollectionId: 'typography',
+          valuesByMode: { default: { type: 'VARIABLE_ALIAS', id: 'family-b' } },
+        },
+        'family-b': {
+          id: 'family-b',
+          name: 'Family B',
+          variableCollectionId: 'typography',
+          valuesByMode: { default: { type: 'VARIABLE_ALIAS', id: 'family-a' } },
+        },
+        weight: {
+          id: 'weight',
+          name: 'Weight',
+          variableCollectionId: 'typography',
+          valuesByMode: { default: true },
+        },
+      },
+      collections: {
+        typography: { id: 'typography', defaultModeId: 'default' },
+      },
+    });
+    const preparedStyle = getOnlyPreparedStyle(
+      await prepareTextStyles({
+        textStyles: [
+          createTextStyle({
+            id: 'fallback',
+            name: 'Body/Fallback',
+            fontFamily: 'Inter',
+            fontStyle: 'Bold',
+            boundVariables: {
+              fontFamily: { id: 'family-a' },
+              fontWeight: { id: 'weight' },
+            },
+          }),
+        ],
+        variableMode: 'value',
+      }),
+    );
+
+    expect(preparedStyle['font-family']).toBe('"Inter", Arial, sans-serif');
+    expect(preparedStyle['font-weight']).toBe('700');
   });
 });
 
@@ -158,7 +338,7 @@ describe('export request handling', () => {
       {
         type: 'export',
         requestId: 'request-1',
-        useVariables: false,
+        variableMode: 'none',
       },
       async () => {
         throw new Error('Figma API unavailable');
