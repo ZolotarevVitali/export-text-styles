@@ -35,6 +35,18 @@ describe('text style loading and edge normalization', () => {
     expect(result['body.scss'][0].originalName).toBe('Body/Regular');
   });
 
+  it('keeps the exact Figma style name while preparing normalized identifiers', async () => {
+    const preparedStyle = getOnlyStyle(
+      await prepareTextStyles({
+        textStyles: [createStyle({ name: 'Text/Body/3XL/- bold (AB)' })],
+        variableMode: 'none',
+      }),
+    );
+
+    expect(preparedStyle.originalName).toBe('Text/Body/3XL/- bold (AB)');
+    expect(preparedStyle.mixinName).toBe('text-style-text-body-3xl-bold-ab-mixin');
+  });
+
   it('falls back to style values when variable names cannot be resolved', async () => {
     vi.stubGlobal('figma', {
       variables: {

@@ -61,6 +61,15 @@ describe('text style file export', () => {
     expect(getTextStyleMixinContent(preparedStyle)).not.toContain('font-weight');
   });
 
+  it('preserves the exact Figma style name in the exported comment', () => {
+    const content = getTextStyleMixinContent({
+      ...preparedStyle,
+      originalName: 'Text/Body/3XL/- bold (AB)',
+    });
+
+    expect(content).toContain('/*figma style name: Text/Body/3XL/- bold (AB)*/');
+  });
+
   it('creates a stable multi-file import index', () => {
     expect(
       getIndexFileContent({
