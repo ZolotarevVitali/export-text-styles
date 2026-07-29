@@ -145,6 +145,20 @@ Mixin names use the full normalized Figma style name:
 Heading/H1 -> text-style-heading-h1-mixin
 ```
 
+Each prepared style also keeps the exact Figma style name in `originalName`.
+The exporter writes it in the comment above the mixin so users can find the
+corresponding style in Figma even when the mixin identifier is normalized:
+
+```scss
+/*figma style name: block heading/- M*/
+@mixin text-style-block-heading-m-mixin {
+	/* properties */
+}
+```
+
+Escape `originalName` only as needed to keep the SCSS comment safe; do not
+normalize it or replace it with `mixinName`.
+
 Names remain unchanged when their normalized result is unique. If distinct
 groups or styles normalize to the same name, every conflicting output receives
 a stable hash suffix. Mixin suffixes include the Figma style ID so duplicate
