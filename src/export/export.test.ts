@@ -187,7 +187,7 @@ describe('text style preparation', () => {
     const [groupFileName] = Object.keys(preparedStyles);
     const groupContent = files?.[groupFileName] ?? '';
 
-    expect(groupContent).toContain('/*figma style name: Heading * -/- Dangerous*/');
+    expect(groupContent).toContain('/*figma style name: Heading * / Dangerous*/');
     expect(groupContent).toContain('font-family: "Rock\'n\\"Roll";');
     expect(() =>
       compileString(`${groupContent}\n.example { @include ${preparedStyle.mixinName}; }`),
