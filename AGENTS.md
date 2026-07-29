@@ -153,20 +153,19 @@ Heading/H1 -> text-style-heading-h1-mixin
 ```
 
 Each prepared style also keeps the exact Figma style name in `originalName`.
-The exporter writes it in the comment above the mixin with hierarchy separators
-shown as ` -/- ` so users can match the Figma breadcrumb even when the mixin
-identifier is normalized. Capitalization and other name characters are
-preserved:
+The exporter writes it unchanged in the comment above the mixin so users can
+find the corresponding style in Figma even when the mixin identifier is
+normalized:
 
 ```scss
-/*figma style name: Text -/- Body -/- 3XL -/- bold (AB)*/
+/*figma style name: Text/Body/3XL/- bold (AB)*/
 @mixin text-style-text-body-3xl-bold-ab-mixin {
 	/* properties */
 }
 ```
 
-Format only the hierarchy separators and escape the result as needed to keep the
-SCSS comment safe; do not normalize its casing or replace it with `mixinName`.
+Escape `originalName` only as needed to keep the SCSS comment safe; do not
+normalize it or replace it with `mixinName`.
 
 Names remain unchanged when their normalized result is unique. If distinct
 groups or styles normalize to the same name, every conflicting output receives
