@@ -15,7 +15,7 @@ const preparedStyle = {
   originalName: 'Body/Regular',
   mixinName: 'text-style-body-regular-mixin',
   'font-size': '16px',
-  'font-family': '"Inter", Arial, sans-serif',
+  'font-family': '"Inter"',
   'font-weight': null,
   'line-height': 'normal',
   'letter-spacing': null,

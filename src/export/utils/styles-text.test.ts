@@ -64,7 +64,7 @@ describe('text style loading and edge normalization', () => {
 
     expect(preparedStyle).toMatchObject({
       'font-size': '16px',
-      'font-family': '"Inter", Arial, sans-serif',
+      'font-family': '"Inter"',
       'font-weight': '400',
       'line-height': '24px',
       'letter-spacing': '0px',

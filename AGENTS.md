@@ -224,7 +224,7 @@ The generated shape is:
 /*figma style name: Heading/H1*/
 @mixin text-style-heading-h1-mixin {
 	font-size: 24px;
-	font-family: "Inter", Arial, sans-serif;
+	font-family: "Inter";
 	font-weight: 700;
 	line-height: 120%;
 	letter-spacing: -0.02em;
@@ -255,7 +255,7 @@ corresponding Figma fields are `fontSize`, `fontFamily`, `fontWeight`,
 and decoration do not support variable bindings on Figma text styles.
 
 For variable values, font families keep the generated
-`"Figma Font Family", Arial, sans-serif` shape with SCSS string escaping.
+`"Figma Font Family"` shape with SCSS string escaping.
 Font weights use the same normalization as style values. Common labels such as
 `Regular`, `Semibold`, and `Bold` map to `400`, `600`, and `700`. Integer
 numeric weights from `1` through `1000` are preserved. `italic` and `oblique`

@@ -188,7 +188,7 @@ describe('text style preparation', () => {
     const groupContent = files?.[groupFileName] ?? '';
 
     expect(groupContent).toContain('/*figma style name: Heading * / Dangerous*/');
-    expect(groupContent).toContain('font-family: "Rock\'n\\"Roll", Arial, sans-serif;');
+    expect(groupContent).toContain('font-family: "Rock\'n\\"Roll";');
     expect(() =>
       compileString(`${groupContent}\n.example { @include ${preparedStyle.mixinName}; }`),
     ).not.toThrow();
@@ -216,7 +216,7 @@ describe('text style preparation', () => {
     expect(content).toContain(
       [
         '\tfont-size: 16px;',
-        '\tfont-family: "Inter", Arial, sans-serif;',
+        '\tfont-family: "Inter";',
         '\tfont-weight: 600;',
         '\tline-height: 120%;',
         '\tletter-spacing: -0.025em;',
@@ -351,7 +351,7 @@ describe('text style preparation', () => {
     );
 
     expect(styleValues['font-size']).toBe('16px');
-    expect(styleValues['font-family']).toBe('"Inter", Arial, sans-serif');
+    expect(styleValues['font-family']).toBe('"Inter"');
     expect(styleValues['font-weight']).toBe('400');
     expect(styleValues['font-style']).toBe('italic');
     expect(styleValues['line-height']).toBe('24px');
@@ -365,7 +365,7 @@ describe('text style preparation', () => {
     expect(variableNames['letter-spacing']).toBe('var(--typography-letter-spacing)');
     expect(variableNames['text-indent']).toBe('var(--typography-paragraph-indent)');
     expect(variableValues['font-size']).toBe('18.1235px');
-    expect(variableValues['font-family']).toBe('"Avenir \\"Next\\"", Arial, sans-serif');
+    expect(variableValues['font-family']).toBe('"Avenir \\"Next\\""');
     expect(variableValues['font-weight']).toBe('650');
     expect(variableValues['font-style']).toBe('oblique');
     expect(variableValues['line-height']).toBe('28px');
@@ -413,7 +413,7 @@ describe('text style preparation', () => {
       }),
     );
 
-    expect(preparedStyle['font-family']).toBe('"Source Sans 3", Arial, sans-serif');
+    expect(preparedStyle['font-family']).toBe('"Source Sans 3"');
   });
 
   it('falls back to style values for cyclic aliases and unsupported values', async () => {
@@ -476,7 +476,7 @@ describe('text style preparation', () => {
     );
 
     expect(preparedStyle['font-size']).toBe('16px');
-    expect(preparedStyle['font-family']).toBe('"Inter", Arial, sans-serif');
+    expect(preparedStyle['font-family']).toBe('"Inter"');
     expect(preparedStyle['font-weight']).toBe('700');
     expect(preparedStyle['line-height']).toBe('20px');
   });

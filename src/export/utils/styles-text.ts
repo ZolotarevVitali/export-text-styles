@@ -161,11 +161,11 @@ const getFontFamily = async ({
     const variableValue = await getVariableValueById(style.boundVariables?.fontFamily?.id);
 
     if (typeof variableValue === 'string' && variableValue) {
-      return `"${escapeScssString(variableValue)}", Arial, sans-serif`;
+      return `"${escapeScssString(variableValue)}"`;
     }
   }
 
-  return `"${escapeScssString(style.fontName.family)}", Arial, sans-serif`;
+  return `"${escapeScssString(style.fontName.family)}"`;
 };
 
 const getFontWeight = async ({
