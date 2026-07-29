@@ -110,12 +110,21 @@
   }
 
   .select {
-    padding: 6px 8px;
-    color: #fff;
-    background-color: #292a2f;
-    border: 1px solid #4d4f56;
-    border-radius: 4px;
+    height: 34px;
+    border: 1px solid #2f3240;
+    border-radius: 8px;
+    padding: 0 10px;
+    font-size: 14px;
+    background: #20242d;
+    color: #f4f7fc;
     cursor: pointer;
+  }
+
+  .select:focus,
+  .select:focus-visible {
+    outline: none;
+    box-shadow: none;
+    border-color: #2f3240;
   }</style><header class="header"><img src="" alt="" aria-hidden="true" class="logo"/><h1 class="title">Export Text Styles to CSS mixins</h1></header><section class="buttons"><button id="export" class="button-export">Export</button><div class="select-container"><label for="variable-mode" class="select-label">Apply variables</label> <select id="variable-mode" class="select"><option value="none">None</option><option value="name" selected="selected">Variable name</option><option value="value">Variable value</option></select></div></section><div class="messages"><div id="message" class="message success" role="status" aria-live="polite"></div><div id="error" class="message error" role="alert" aria-live="assertive"></div></div><div id="loading" class="loading" role="status" aria-live="polite" aria-hidden="true"><div class="loading-text">Loading...</div></div><script defer="defer">(()=>{var e={710:e=>{
 /*!
 
