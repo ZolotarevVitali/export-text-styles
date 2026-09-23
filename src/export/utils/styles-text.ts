@@ -84,7 +84,7 @@ const getTextStyleFileNames = (textStyles: TFigmaTextStyle[]): Map<string, strin
 const getTextStyleMixinNames = (textStyles: TFigmaTextStyle[]): Map<string, string> => {
   const candidates = textStyles.map((style) => ({
     key: style.id,
-    baseName: `text-style-${normalizeScssIdentifier(style.name)}-mixin`,
+    baseName: `text-style-${normalizeScssIdentifier(style.name)}`,
     discriminator: `${style.name}:${style.id}`,
   }));
 

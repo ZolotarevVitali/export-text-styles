@@ -149,7 +149,7 @@ Style and group names are normalized by:
 Mixin names use the full normalized Figma style name:
 
 ```text
-Heading/H1 -> text-style-heading-h1-mixin
+Heading/H1 -> text-style-heading-h1
 ```
 
 Each prepared style also keeps the exact Figma style name in `originalName`.
@@ -159,8 +159,8 @@ normalized:
 
 ```scss
 /*figma style name: Text/Body/3XL/- bold (AB)*/
-@mixin text-style-text-body-3xl-bold-ab-mixin {
-	/* properties */
+%text-style-text-body-3xl-bold-ab {
+  /* properties */
 }
 ```
 
@@ -223,16 +223,16 @@ The generated shape is:
 
 ```scss
 /*figma style name: Heading/H1*/
-@mixin text-style-heading-h1-mixin {
-	font-size: 24px;
-	font-family: "Inter";
-	font-weight: 700;
-	line-height: 120%;
-	letter-spacing: -0.02em;
-	font-style: normal;
-	text-transform: none;
-	text-decoration: none;
-	text-indent: 0px;
+%text-style-heading-h1 {
+  font-size: 24px;
+  font-family: 'Inter';
+  font-weight: 700;
+  line-height: 120%;
+  letter-spacing: -0.02em;
+  font-style: normal;
+  text-transform: none;
+  text-decoration: none;
+  text-indent: 0px;
 }
 ```
 
@@ -247,7 +247,7 @@ supported properties:
 - `None` emits the text style's own values.
 - `Variable name` emits `var(--normalized-variable-name)` and is the default.
 - `Variable value` reads the variable collection's default mode. Aliases are
- resolved recursively using each referenced collection's default mode.
+  resolved recursively using each referenced collection's default mode.
 
 Variable modes apply to `font-size`, `font-family`, `font-weight`,
 `line-height`, `letter-spacing`, `font-style`, and `text-indent`. Their

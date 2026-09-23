@@ -43,9 +43,7 @@ const createTextStyle = ({
   boundVariables,
 });
 
-const getOnlyPreparedStyle = (
-  preparedStyles: Awaited<ReturnType<typeof prepareTextStyles>>,
-) => {
+const getOnlyPreparedStyle = (preparedStyles: Awaited<ReturnType<typeof prepareTextStyles>>) => {
   return Object.values(preparedStyles).flat()[0];
 };
 
@@ -90,7 +88,7 @@ describe('text style preparation', () => {
     const files = buildTextStyleFiles(preparedStyles);
 
     expect(groupFileName).toMatch(/^index-[a-z0-9]+\.scss$/);
-    expect(files?.[groupFileName]).toContain('@mixin text-style-index-title-mixin');
+    expect(files?.[groupFileName]).toContain('%text-style-index-title');
     expect(files?.['index.scss']).toBe(`@import './${groupFileName.replace(/\.scss$/, '')}';\n`);
   });
 
@@ -105,12 +103,12 @@ describe('text style preparation', () => {
       variableMode: 'none',
     });
     const getMixinNamesByOriginalName = (
-      preparedStyles: Awaited<ReturnType<typeof prepareTextStyles>>,
+      preparedStyles: Awaited<ReturnType<typeof prepareTextStyles>>
     ): Record<string, string> => {
       return Object.fromEntries(
         Object.values(preparedStyles)
           .flat()
-          .map(({ originalName, mixinName }) => [originalName, mixinName]),
+          .map(({ originalName, mixinName }) => [originalName, mixinName])
       );
     };
     const firstMixinNames = getMixinNamesByOriginalName(firstResult);
@@ -118,7 +116,7 @@ describe('text style preparation', () => {
 
     expect(firstMixinNames).toEqual(secondMixinNames);
     expect(new Set(Object.values(firstMixinNames))).toHaveLength(2);
-    expect(firstMixinNames['Heading/H1']).toMatch(/^text-style-heading-h1-mixin-[a-z0-9]+$/);
+    expect(firstMixinNames['Heading/H1']).toMatch(/^text-style-heading-h1-[a-z0-9]+$/);
   });
 
   it('keeps colliding groups in separate deterministic files', async () => {
@@ -133,7 +131,7 @@ describe('text style preparation', () => {
 
     expect(fileNames).toHaveLength(2);
     expect(fileNames.every((fileName) => /^heading-one-[a-z0-9]+\.scss$/.test(fileName))).toBe(
-      true,
+      true
     );
   });
 
@@ -150,8 +148,9 @@ describe('text style preparation', () => {
       .map(({ mixinName }) => mixinName);
 
     expect(new Set(mixinNames)).toHaveLength(2);
-    expect(mixinNames.every((mixinName) => /^text-style-body-regular-mixin-[a-z0-9]+$/.test(mixinName)))
-      .toBe(true);
+    expect(
+      mixinNames.every((mixinName) => /^text-style-body-regular-[a-z0-9]+$/.test(mixinName))
+    ).toBe(true);
   });
 
   it('creates safe names for special and empty group names', async () => {
@@ -165,9 +164,7 @@ describe('text style preparation', () => {
     });
 
     expect(Object.keys(specialNames)).toEqual(['heading-lead.scss']);
-    expect(specialNames['heading-lead.scss'][0].mixinName).toBe(
-      'text-style-heading-lead-title-mixin',
-    );
+    expect(specialNames['heading-lead.scss'][0].mixinName).toBe('text-style-heading-lead-title');
     expect(Object.keys(emptyGroup)).toEqual(['unnamed.scss']);
   });
 
@@ -190,7 +187,7 @@ describe('text style preparation', () => {
     expect(groupContent).toContain('/*figma style name: Heading * / Dangerous*/');
     expect(groupContent).toContain('font-family: "Rock\'n\\"Roll";');
     expect(() =>
-      compileString(`${groupContent}\n.example { @include ${preparedStyle.mixinName}; }`),
+      compileString(`${groupContent}\n.example { @include ${preparedStyle.mixinName}; }`)
     ).not.toThrow();
   });
 
@@ -224,7 +221,7 @@ describe('text style preparation', () => {
         '\ttext-transform: uppercase;',
         '\ttext-decoration: line-through;',
         '\ttext-indent: 24px;',
-      ].join('\n'),
+      ].join('\n')
     );
   });
 
@@ -243,7 +240,7 @@ describe('text style preparation', () => {
           }),
         ],
         variableMode: 'none',
-      }),
+      })
     );
 
     expect(preparedStyle['line-height']).toBe('normal');
@@ -264,7 +261,7 @@ describe('text style preparation', () => {
           }),
         ],
         variableMode: 'none',
-      }),
+      })
     );
 
     expect(preparedStyle['text-transform']).toBeNull();
@@ -341,13 +338,13 @@ describe('text style preparation', () => {
     ];
 
     const styleValues = getOnlyPreparedStyle(
-      await prepareTextStyles({ textStyles, variableMode: 'none' }),
+      await prepareTextStyles({ textStyles, variableMode: 'none' })
     );
     const variableNames = getOnlyPreparedStyle(
-      await prepareTextStyles({ textStyles, variableMode: 'name' }),
+      await prepareTextStyles({ textStyles, variableMode: 'name' })
     );
     const variableValues = getOnlyPreparedStyle(
-      await prepareTextStyles({ textStyles, variableMode: 'value' }),
+      await prepareTextStyles({ textStyles, variableMode: 'value' })
     );
 
     expect(styleValues['font-size']).toBe('16px');
@@ -410,7 +407,7 @@ describe('text style preparation', () => {
           }),
         ],
         variableMode: 'value',
-      }),
+      })
     );
 
     expect(preparedStyle['font-family']).toBe('"Source Sans 3"');
@@ -472,7 +469,7 @@ describe('text style preparation', () => {
           }),
         ],
         variableMode: 'value',
-      }),
+      })
     );
 
     expect(preparedStyle['font-size']).toBe('16px');
@@ -505,7 +502,7 @@ describe('export request handling', () => {
         requestId: 'request-success',
         variableMode: 'value',
       },
-      async () => result,
+      async () => result
     );
 
     expect(response).toEqual({
@@ -524,7 +521,7 @@ describe('export request handling', () => {
       },
       async () => {
         throw new Error('Figma API unavailable');
-      },
+      }
     );
 
     expect(response).toEqual({
@@ -543,7 +540,7 @@ describe('export request handling', () => {
       },
       async () => {
         throw 'unknown failure';
-      },
+      }
     );
 
     expect(response).toEqual({
