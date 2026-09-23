@@ -13,7 +13,7 @@ vi.mock('../utils/styles-text', () => ({
 
 const preparedStyle = {
   originalName: 'Body/Regular',
-  mixinName: 'text-style-body-regular-mixin',
+  mixinName: 'text-style-body-regular',
   'font-size': '16px',
   'font-family': '"Inter"',
   'font-weight': null,
@@ -50,13 +50,13 @@ describe('text style file export', () => {
     const secondStyle = {
       ...preparedStyle,
       originalName: 'Body/Bold',
-      mixinName: 'text-style-body-bold-mixin',
+      mixinName: 'text-style-body-bold',
       'font-weight': '700',
     };
     const files = buildTextStyleFiles({ 'body.scss': [preparedStyle, secondStyle] });
 
     expect(files?.['body.scss']).toBe(
-      `${getTextStyleMixinContent(preparedStyle)}\n\n${getTextStyleMixinContent(secondStyle)}`,
+      `${getTextStyleMixinContent(preparedStyle)}\n\n${getTextStyleMixinContent(secondStyle)}`
     );
     expect(getTextStyleMixinContent(preparedStyle)).not.toContain('font-weight');
   });
@@ -75,7 +75,7 @@ describe('text style file export', () => {
       getIndexFileContent({
         'heading.scss': [preparedStyle],
         'body.scss': [preparedStyle],
-      }),
+      })
     ).toBe("@import './heading';\n@import './body';\n");
   });
 });

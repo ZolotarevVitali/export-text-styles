@@ -15,7 +15,7 @@ export const exportTextStyles = async ({
 };
 
 export const buildTextStyleFiles = (
-  textStyles: Record<string, TPreparedTextStyle[]>,
+  textStyles: Record<string, TPreparedTextStyle[]>
 ): TTextStyleFiles | null => {
   if (Object.keys(textStyles).length === 0) {
     return null;
@@ -32,9 +32,7 @@ export const buildTextStyleFiles = (
 
 /** Joins all generated mixins assigned to a single SCSS file. */
 const getTextStylesFileContent = (textStyles: TPreparedTextStyle[]): string => {
-  return textStyles
-    .map((textStyle) => getTextStyleMixinContent(textStyle))
-    .join('\n\n');
+  return textStyles.map((textStyle) => getTextStyleMixinContent(textStyle)).join('\n\n');
 };
 
 /** Serializes one prepared text style as a documented SCSS mixin. */
@@ -46,13 +44,11 @@ export const getTextStyleMixinContent = (textStyle: TPreparedTextStyle): string 
     .map(([key, value]) => `\t${key}: ${value};`)
     .join('\n');
 
-  return `${description}@mixin ${mixinName} {\n${mixinContent}\n}`;
+  return `${description}%${mixinName} {\n${mixinContent}\n}`;
 };
 
 /** Generates an index that imports every text-style SCSS file. */
-export const getIndexFileContent = (
-  textStyles: Record<string, TPreparedTextStyle[]>,
-): string => {
+export const getIndexFileContent = (textStyles: Record<string, TPreparedTextStyle[]>): string => {
   return Object.keys(textStyles)
     .map((fileName) => `@import './${fileName.replace(/\.scss$/, '')}';`)
     .join('\n')

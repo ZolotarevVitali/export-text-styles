@@ -40,11 +40,11 @@ describe('text style loading and edge normalization', () => {
       await prepareTextStyles({
         textStyles: [createStyle({ name: 'Text/Body/3XL/- bold (AB)' })],
         variableMode: 'none',
-      }),
+      })
     );
 
     expect(preparedStyle.originalName).toBe('Text/Body/3XL/- bold (AB)');
-    expect(preparedStyle.mixinName).toBe('text-style-text-body-3xl-bold-ab-mixin');
+    expect(preparedStyle.mixinName).toBe('text-style-text-body-3xl-bold-ab');
   });
 
   it('falls back to style values when variable names cannot be resolved', async () => {
@@ -71,7 +71,7 @@ describe('text style loading and edge normalization', () => {
           }),
         ],
         variableMode: 'name',
-      }),
+      })
     );
 
     expect(preparedStyle).toMatchObject({
@@ -114,7 +114,7 @@ describe('text style loading and edge normalization', () => {
           }),
         ],
         variableMode: 'value',
-      }),
+      })
     );
 
     expect(preparedStyle['letter-spacing']).toBe('0px');
@@ -134,7 +134,7 @@ describe('text style loading and edge normalization', () => {
           }),
         ],
         variableMode: 'none',
-      }),
+      })
     );
 
     expect(preparedStyle).toMatchObject({
@@ -159,7 +159,7 @@ describe('text style loading and edge normalization', () => {
           }),
         ],
         variableMode: 'none',
-      }),
+      })
     );
 
     expect(preparedStyle).toMatchObject({
@@ -175,10 +175,7 @@ describe('text style loading and edge normalization', () => {
 
   it('maps lowercase text and exercises duplicate-name collision fallback', async () => {
     const preparedStyles = await prepareTextStyles({
-      textStyles: [
-        createStyle({ textCase: 'LOWER' }),
-        createStyle({ textCase: 'LOWER' }),
-      ],
+      textStyles: [createStyle({ textCase: 'LOWER' }), createStyle({ textCase: 'LOWER' })],
       variableMode: 'none',
     });
     const styles = Object.values(preparedStyles).flat();
